@@ -322,12 +322,15 @@ async function saveCompletionRecord(
 export async function onGameComplete(
   state: GameState,
   events: readonly GameEvent[],
+  options: { clearActive?: boolean } = {},
 ): Promise<string> {
   const eventLog = eventLogFor(state, events);
   const summary = completedSummaryFor(state, eventLog);
   const gameId = await saveCompletionRecord(state, eventLog, summary);
 
-  await clearActiveGame();
+  if (options.clearActive ?? true) {
+    await clearActiveGame();
+  }
 
   return gameId;
 }

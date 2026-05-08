@@ -129,6 +129,7 @@ function isTurnBoundaryEvent(event: GameEvent): boolean {
     case "leg_won":
     case "set_won":
     case "match_won":
+    case "match_continued":
       return true;
     case "game_started":
     case "dart_thrown":

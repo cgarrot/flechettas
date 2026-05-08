@@ -33,6 +33,7 @@ const GAME_EVENT_TYPES = new Set<string>([
   "set_won",
   "round_advanced",
   "match_won",
+  "match_continued",
   "undo",
 ]);
 
@@ -305,6 +306,7 @@ function isTurnBoundaryEvent(event: GameEvent): boolean {
     case "leg_won":
     case "set_won":
     case "match_won":
+    case "match_continued":
       return true;
     case "game_started":
     case "dart_thrown":
@@ -666,6 +668,7 @@ function replayCricketEvents(baseState: GameState, events: readonly GameEvent[])
       case "player_bust":
       case "round_advanced":
       case "match_won":
+      case "match_continued":
       case "undo":
         nextState = processEvent(nextState, event);
         break;

@@ -458,7 +458,7 @@ function applyMatchWon(state: GameState, event: GameEvent & { type: "match_won" 
 
     return {
       ...player,
-      status: player.status === "eliminated" ? player.status : ("waiting" as const),
+      status: player.status === "eliminated" || player.status === "winner" ? player.status : ("waiting" as const),
       currentTurn: [],
     };
   });
@@ -469,6 +469,36 @@ function applyMatchWon(state: GameState, event: GameEvent & { type: "match_won" 
     phase: "match-complete",
     players,
     result: event.result,
+  });
+}
+
+function applyMatchContinued(state: GameState, event: GameEvent & { type: "match_continued" }): GameState {
+  if (
+    state.phase !== "match-complete" ||
+    !playerExists(state, event.playerId) ||
+    playerStatus(state, event.playerId) === "winner" ||
+    playerStatus(state, event.playerId) === "eliminated"
+  ) {
+    return state;
+  }
+
+  const players = state.players.map((player) => {
+    if (player.status === "winner" || player.status === "eliminated") {
+      return { ...player, currentTurn: [] };
+    }
+
+    return {
+      ...player,
+      status: player.id === event.playerId ? ("active" as const) : ("waiting" as const),
+      currentTurn: [],
+    };
+  });
+
+  return appendEvent(state, event, {
+    activePlayerId: event.playerId,
+    currentTurn: [],
+    phase: "playing",
+    players,
   });
 }
 
@@ -543,6 +573,8 @@ export function processEvent(state: GameState, event: GameEvent): GameState {
       return applyRoundAdvanced(state, event);
     case "match_won":
       return applyMatchWon(state, event);
+    case "match_continued":
+      return applyMatchContinued(state, event);
     case "undo":
       return state;
   }

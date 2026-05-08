@@ -270,6 +270,7 @@ export type GameEventType =
   | "set_won"
   | "round_advanced"
   | "match_won"
+  | "match_continued"
   | "undo";
 
 export type GameWinReason = "shanghai";
@@ -338,6 +339,10 @@ export type MatchWonEvent = BaseGameEvent<"match_won"> & {
   reason?: GameWinReason;
 };
 
+export type MatchContinuedEvent = BaseGameEvent<"match_continued"> & {
+  playerId: PlayerId;
+};
+
 export type UndoEvent = BaseGameEvent<"undo"> & {
   undoneEventId: string;
   undoneEventType: Exclude<GameEventType, "undo">;
@@ -353,4 +358,5 @@ export type GameEvent =
   | SetWonEvent
   | RoundAdvancedEvent
   | MatchWonEvent
+  | MatchContinuedEvent
   | UndoEvent;

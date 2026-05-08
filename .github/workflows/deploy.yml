@@ -18,9 +18,6 @@ jobs:
     permissions:
       contents: read
 
-    env:
-      PRODUCTION_BASE_URL: http://93.127.158.112:3001
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -86,8 +83,15 @@ jobs:
           fi
 
       - name: Wait for production API
+        env:
+          PRODUCTION_BASE_URL: ${{ secrets.PRODUCTION_BASE_URL }}
         run: |
           set -euo pipefail
+
+          if [ -z "${PRODUCTION_BASE_URL:-}" ]; then
+            echo "PRODUCTION_BASE_URL secret is required."
+            exit 1
+          fi
 
           for attempt in $(seq 1 60); do
             if curl -fsS \

@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, ArrowRight, CheckCircle2, ClipboardList, Play } from "lucide-react";
+import { ArrowLeft, ArrowRight, CheckCircle2, ClipboardList, Play, UserRoundPlus } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useMemo, useRef, useState } from "react";
@@ -233,8 +233,11 @@ export function ReviewStart({
 export function SetupFlow({ locale }: SetupFlowProps) {
   const router = useRouter();
   const setup = useTranslations("Setup");
+  const sessionCopy = useTranslations("Session");
   const modes = useTranslations("Modes");
   const newGame = useGameStore((state) => state.newGame);
+  const sharedSessionCode = useGameStore((state) => state.sharedSessionCode);
+  const sharedSessionPlayers = useGameStore((state) => state.sharedSessionPlayers);
   const nextHumanId = useRef(2);
   const nextBotId = useRef(1);
   const [selectedMode, setSelectedMode] = useState<GameMode>("x01");
@@ -254,6 +257,10 @@ export function SetupFlow({ locale }: SetupFlowProps) {
   const currentStepIndex = stepIndexFor(step);
   const modeLabel = modes(modeMessageKeys[selectedMode]);
   const gameRoute = useMemo(() => gameRouteFor(locale), [locale]);
+  const reusableSessionPlayers = useMemo(
+    () => sharedSessionPlayers.filter((sessionPlayer) => !players.some((player) => player.id === sessionPlayer.id)),
+    [players, sharedSessionPlayers],
+  );
 
   function validatePlayers(): ValidationResult {
     if (players.length === 0) {
@@ -366,6 +373,25 @@ export function SetupFlow({ locale }: SetupFlowProps) {
     ]);
   }
 
+  function addSessionPlayer(playerId: string) {
+    const sessionPlayer = sharedSessionPlayers.find((candidate) => candidate.id === playerId);
+
+    if (!sessionPlayer || players.length >= MAX_TOTAL_PLAYERS) {
+      setPlayerValidationMessage(setup("errors.totalLimit", { count: MAX_TOTAL_PLAYERS }));
+      return;
+    }
+
+    setPlayerValidationMessage(null);
+    setPlayers((currentPlayers) => [
+      ...currentPlayers,
+      {
+        id: sessionPlayer.id,
+        name: sessionPlayer.name,
+        isBot: false,
+      },
+    ]);
+  }
+
   function removePlayer(playerId: string) {
     setPlayers((currentPlayers) => currentPlayers.filter((player) => player.id !== playerId));
   }
@@ -443,26 +469,54 @@ export function SetupFlow({ locale }: SetupFlowProps) {
               <ModeSelector selectedMode={selectedMode} onSelectMode={setSelectedMode} />
             ) : null}
             {step === "players" ? (
-              <PlayerConfig
-                players={players}
-                maxHumanPlayers={MAX_HUMAN_PLAYERS}
-                maxTotalPlayers={MAX_TOTAL_PLAYERS}
-                validationMessage={playerValidationMessage}
-                onAddHuman={addHumanPlayer}
-                onAddBot={addBotPlayer}
-                onRemovePlayer={removePlayer}
-                onRenamePlayer={(playerId, name) => {
-                  setPlayerValidationMessage(null);
-                  setPlayers((currentPlayers) => currentPlayers.map((player) => (
-                    player.id === playerId ? { ...player, name } : player
-                  )));
-                }}
-                onBotLevelChange={(playerId, botLevel) => {
-                  setPlayers((currentPlayers) => currentPlayers.map((player) => (
-                    player.id === playerId ? { ...player, botLevel } : player
-                  )));
-                }}
-              />
+              <div className="space-y-5">
+                {sharedSessionCode && reusableSessionPlayers.length > 0 ? (
+                  <Card className="border-secondary/25 bg-background/70 py-4">
+                    <CardHeader className="gap-2 px-4">
+                      <CardTitle className="flex items-center gap-2 text-base">
+                        <UserRoundPlus className="size-4 text-secondary" aria-hidden="true" />
+                        {sessionCopy("setupPlayersTitle")}
+                      </CardTitle>
+                      <CardDescription>{sessionCopy("setupPlayersDescription", { code: sharedSessionCode })}</CardDescription>
+                    </CardHeader>
+                    <CardContent className="flex flex-wrap gap-2 px-4">
+                      {reusableSessionPlayers.map((sessionPlayer) => (
+                        <Button
+                          key={sessionPlayer.id}
+                          type="button"
+                          variant="secondary"
+                          size="sm"
+                          disabled={players.length >= MAX_TOTAL_PLAYERS}
+                          onClick={() => addSessionPlayer(sessionPlayer.id)}
+                        >
+                          {sessionCopy("addSetupPlayer", { player: sessionPlayer.name })}
+                        </Button>
+                      ))}
+                    </CardContent>
+                  </Card>
+                ) : null}
+
+                <PlayerConfig
+                  players={players}
+                  maxHumanPlayers={MAX_HUMAN_PLAYERS}
+                  maxTotalPlayers={MAX_TOTAL_PLAYERS}
+                  validationMessage={playerValidationMessage}
+                  onAddHuman={addHumanPlayer}
+                  onAddBot={addBotPlayer}
+                  onRemovePlayer={removePlayer}
+                  onRenamePlayer={(playerId, name) => {
+                    setPlayerValidationMessage(null);
+                    setPlayers((currentPlayers) => currentPlayers.map((player) => (
+                      player.id === playerId ? { ...player, name } : player
+                    )));
+                  }}
+                  onBotLevelChange={(playerId, botLevel) => {
+                    setPlayers((currentPlayers) => currentPlayers.map((player) => (
+                      player.id === playerId ? { ...player, botLevel } : player
+                    )));
+                  }}
+                />
+              </div>
             ) : null}
             {step === "config" ? (
               <GameConfigForm config={selectedConfig} onConfigChange={updateConfig} />

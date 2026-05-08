@@ -1,6 +1,6 @@
 "use client";
 
-import { BarChart3, Home, RotateCcw, Trophy } from "lucide-react";
+import { BarChart3, Home, Play, RotateCcw, Trophy } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
@@ -79,6 +79,7 @@ export function MatchEnd({ locale }: MatchEndProps) {
   const gameState = useGameStore((state) => state.gameState);
   const eventLog = useGameStore((state) => state.eventLog);
   const finishGame = useGameStore((state) => state.finishGame);
+  const continueAfterWinner = useGameStore((state) => state.continueAfterWinner);
   const newGame = useGameStore((state) => state.newGame);
   const [isSaving, setIsSaving] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -157,6 +158,19 @@ export function MatchEnd({ locale }: MatchEndProps) {
     }
   }
 
+  async function handleContinue() {
+    setIsSaving(true);
+    setActionError(null);
+
+    try {
+      await continueAfterWinner();
+    } catch {
+      setActionError(game("matchSaveFailed"));
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
   return (
     <Dialog open={isOpen}>
       <DialogContent className="max-h-[calc(100vh-2rem)] overflow-y-auto border-primary/25 bg-card/95 shadow-2xl shadow-primary/15 sm:max-w-2xl sm:rounded-2xl" showCloseButton={false}>
@@ -214,10 +228,24 @@ export function MatchEnd({ locale }: MatchEndProps) {
 
         <Separator />
 
-        <DialogFooter className="gap-2 sm:grid sm:grid-cols-3">
+        <DialogFooter className="gap-2 sm:grid sm:grid-cols-4">
           <Button
             type="button"
             variant="secondary"
+            size="lg"
+            className="min-h-12 rounded-xl"
+            data-testid="match-end-continue"
+            disabled={isSaving}
+            onClick={() => {
+              void handleContinue();
+            }}
+          >
+            <Play aria-hidden="true" />
+            {game("matchContinue")}
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
             size="lg"
             className="min-h-12 rounded-xl"
             data-testid="match-end-stats"

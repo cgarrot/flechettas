@@ -79,6 +79,14 @@ function parseTurnTotal(value: string): number | null {
   return Number.isInteger(parsed) ? parsed : null;
 }
 
+function segmentValue(segment: NumberSegment, multiplier: Multiplier): number {
+  return segment * multiplier;
+}
+
+function bullValue(multiplier: Multiplier): number {
+  return multiplier === 2 ? 50 : 25;
+}
+
 export function ScoringInput({ className }: ScoringInputProps) {
   const scoring = useTranslations("Scoring");
   const gameState = useGameStore((state) => state.gameState);
@@ -142,7 +150,7 @@ export function ScoringInput({ className }: ScoringInputProps) {
 
   return (
     <Card className={cn("overflow-hidden border-primary/20 bg-card/95 shadow-2xl shadow-primary/10", className)}>
-      <CardHeader className="gap-4">
+      <CardHeader className="gap-3 py-4 sm:py-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="space-y-2">
             <Badge variant="outline" className="bg-background/70 uppercase tracking-[0.18em] text-primary">
@@ -150,15 +158,15 @@ export function ScoringInput({ className }: ScoringInputProps) {
               {scoring("inputKicker")}
             </Badge>
             <div className="space-y-1">
-              <CardTitle className="text-2xl tracking-tight sm:text-3xl">{scoring("inputTitle")}</CardTitle>
-              <CardDescription>{scoring("inputDescription")}</CardDescription>
+              <CardTitle className="text-xl tracking-tight sm:text-3xl">{scoring("inputTitle")}</CardTitle>
+              <CardDescription className="hidden sm:block">{scoring("inputDescription")}</CardDescription>
             </div>
           </div>
           <Button
             type="button"
             variant="secondary"
             size="lg"
-            className="min-h-12 border-secondary/40"
+            className="min-h-10 border-secondary/40 sm:min-h-12"
             data-testid="toggle-input-mode"
             onClick={switchInputMode}
           >
@@ -168,10 +176,10 @@ export function ScoringInput({ className }: ScoringInputProps) {
         </div>
       </CardHeader>
 
-      <CardContent className="space-y-6">
+      <CardContent className="space-y-4 pb-4 sm:space-y-6 sm:pb-6">
         {inputMode === "dart-by-dart" ? (
-          <div className="space-y-5">
-            <div className="space-y-3">
+          <div className="space-y-4 sm:space-y-5">
+            <div className="space-y-2 sm:space-y-3">
               <div className="flex items-center justify-between gap-3">
                 <p className="text-sm font-medium">{scoring("multiplier")}</p>
                 {selectedSegment === "bull" ? (
@@ -190,7 +198,7 @@ export function ScoringInput({ className }: ScoringInputProps) {
                       variant={isSelected ? "default" : "outline"}
                       size="lg"
                       className={cn(
-                        "min-h-14 flex-col gap-1 rounded-xl",
+                        "min-h-11 flex-col gap-0.5 rounded-xl sm:min-h-14 sm:gap-1",
                         isSelected && option.id === "d" && "border-secondary/60 bg-secondary text-secondary-foreground shadow-secondary/25 hover:bg-secondary/90",
                         isSelected && option.id === "t" && "border-accent/60 bg-accent text-accent-foreground shadow-accent/25 hover:bg-accent/90",
                       )}
@@ -199,7 +207,7 @@ export function ScoringInput({ className }: ScoringInputProps) {
                       aria-pressed={isSelected}
                       onClick={() => selectMultiplier(option.value)}
                     >
-                      <span className="text-lg font-semibold">{scoring(option.shortKey)}</span>
+                      <span className="text-base font-semibold sm:text-lg">{scoring(option.shortKey)}</span>
                       <span className="text-xs opacity-75">{scoring(option.labelKey)}</span>
                     </Button>
                   );
@@ -207,9 +215,9 @@ export function ScoringInput({ className }: ScoringInputProps) {
               </div>
             </div>
 
-            <div className="space-y-3">
+            <div className="space-y-2 sm:space-y-3">
               <p className="text-sm font-medium">{scoring("segment")}</p>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-5 gap-1.5 sm:grid-cols-5 sm:gap-2 lg:grid-cols-5">
                 {NUMBER_SEGMENTS.map((segment) => {
                   const isSelected = !isMissSelected && selectedSegment === segment;
 
@@ -218,30 +226,31 @@ export function ScoringInput({ className }: ScoringInputProps) {
                       key={segment}
                       type="button"
                       variant={isSelected ? "default" : "outline"}
-                      className="min-h-12 rounded-xl px-0 font-mono text-lg font-black"
+                      className="min-h-11 flex-col gap-0 rounded-xl px-0 font-mono text-base font-black sm:min-h-12 sm:text-lg"
                       data-testid={`seg-${segment}`}
                       aria-pressed={isSelected}
                       onClick={() => selectSegment(segment)}
                     >
-                      {segment}
+                      <span>{segment}</span>
+                      <span className="text-[0.65rem] font-semibold opacity-70">{segmentValue(segment, selectedMultiplier)}</span>
                     </Button>
                   );
                 })}
                 <Button
                   type="button"
                   variant={!isMissSelected && selectedSegment === "bull" ? "default" : "outline"}
-                  className="min-h-12 rounded-xl sm:col-span-2 lg:col-span-2"
+                  className="min-h-11 flex-col gap-0 rounded-xl sm:min-h-12"
                   data-testid="seg-bull"
                   aria-pressed={!isMissSelected && selectedSegment === "bull"}
                   onClick={() => selectSegment("bull")}
                 >
-                  <Crosshair aria-hidden="true" />
-                  {scoring("bull")}
+                  <span className="flex items-center gap-1"><Crosshair aria-hidden="true" />{scoring("bull")}</span>
+                  <span className="text-[0.65rem] font-semibold opacity-70">{bullValue(selectedMultiplier)}</span>
                 </Button>
                 <Button
                   type="button"
                   variant={isMissSelected ? "default" : "secondary"}
-                  className="min-h-12 rounded-xl sm:col-span-2 lg:col-span-2"
+                  className="min-h-11 rounded-xl sm:min-h-12"
                   data-testid="dart-miss"
                   aria-pressed={isMissSelected}
                   onClick={() => {
@@ -254,10 +263,10 @@ export function ScoringInput({ className }: ScoringInputProps) {
               </div>
             </div>
 
-            <div className="grid gap-3 rounded-2xl border border-primary/20 bg-background/65 p-4 sm:grid-cols-[1fr_auto] sm:items-center">
+            <div className="grid gap-3 rounded-2xl border border-primary/20 bg-background/65 p-3 sm:grid-cols-[1fr_auto] sm:items-center sm:p-4">
               <div className="space-y-1">
                 <p className="text-sm font-medium text-muted-foreground">{scoring("currentDart")}</p>
-                <p className="font-mono text-4xl font-black tracking-tight">
+                <p className="font-mono text-3xl font-black tracking-tight sm:text-4xl">
                   {selectedDart ? formatDart(selectedDart) : scoring("selectDart")}
                 </p>
                 {selectedDart ? (
@@ -269,7 +278,7 @@ export function ScoringInput({ className }: ScoringInputProps) {
               <Button
                 type="button"
                 size="lg"
-                className="min-h-14 rounded-xl text-base"
+                className="min-h-12 rounded-xl text-base sm:min-h-14"
                 data-testid="confirm-dart"
                 disabled={!selectedDart || !hasPlayableTurn}
                 onClick={() => {

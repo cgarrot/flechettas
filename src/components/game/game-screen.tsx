@@ -30,6 +30,7 @@ type GameScreenProps = Readonly<{
 
 const BOT_THINKING_DELAY_MS = 800;
 const BOT_DART_DELAY_MS = 400;
+const SHARED_GAME_POLL_MS = 2000;
 const DEFAULT_BOT_LEVEL = 1 satisfies BotLevel;
 
 function newGameRouteFor(locale: Locale): string {
@@ -115,7 +116,10 @@ export function GameScreen({ locale }: GameScreenProps) {
   const game = useTranslations("Game");
   const gameState = useGameStore((state) => state.gameState);
   const resumeActiveGame = useGameStore((state) => state.resumeActiveGame);
+  const refreshSharedActiveGame = useGameStore((state) => state.refreshSharedActiveGame);
   const throwDart = useGameStore((state) => state.throwDart);
+  const sharedSessionCode = useGameStore((state) => state.sharedSessionCode);
+  const sharedSessionPlayerId = useGameStore((state) => state.sharedSessionPlayerId);
   const [hasCheckedResume, setHasCheckedResume] = useState(false);
   const [botPlayback, setBotPlayback] = useState<BotPlaybackState | null>(null);
   const activeBotTurnKey = useRef<string | null>(null);
@@ -156,6 +160,27 @@ export function GameScreen({ locale }: GameScreenProps) {
   }, [hasCheckedResume, resumeActiveGame]);
 
   useEffect(() => {
+    if (!sharedSessionCode || !hasCheckedResume) {
+      return;
+    }
+
+    let isCancelled = false;
+
+    void refreshSharedActiveGame();
+
+    const intervalId = window.setInterval(() => {
+      if (!isCancelled) {
+        void refreshSharedActiveGame();
+      }
+    }, SHARED_GAME_POLL_MS);
+
+    return () => {
+      isCancelled = true;
+      window.clearInterval(intervalId);
+    };
+  }, [hasCheckedResume, refreshSharedActiveGame, sharedSessionCode]);
+
+  useEffect(() => {
     const currentState = useGameStore.getState().gameState;
     const currentActivePlayer = currentState?.players.find((player) => player.id === currentState.activePlayerId);
 
@@ -166,6 +191,13 @@ export function GameScreen({ locale }: GameScreenProps) {
       !currentActivePlayer.isBot ||
       currentState.currentTurn.length > 0
     ) {
+      return;
+    }
+
+    if (sharedSessionCode && sharedSessionPlayerId) {
+      // Shared-session V1 disables bot autoplay once a device has selected a
+      // session player. That keeps bot turns single-writer and avoids two open
+      // scorers generating duplicate bot darts.
       return;
     }
 
@@ -246,13 +278,15 @@ export function GameScreen({ locale }: GameScreenProps) {
     gameId,
     gamePhase,
     throwDart,
+    sharedSessionCode,
+    sharedSessionPlayerId,
   ]);
 
   const isBotTurn = Boolean(activePlayer?.isBot && gameState?.phase === "playing");
 
   return (
-    <main className="min-h-screen overflow-hidden bg-transparent px-4 py-6 text-foreground sm:px-6 lg:px-8">
-      <section className="relative mx-auto flex max-w-7xl flex-col gap-6">
+    <main className="min-h-screen overflow-hidden bg-transparent px-2 py-3 text-foreground sm:px-6 sm:py-6 lg:px-8">
+      <section className="relative mx-auto flex max-w-7xl flex-col gap-3 sm:gap-6">
         <div className="pointer-events-none absolute -top-28 right-4 -z-10 size-72 rounded-full bg-chart-2/25 blur-3xl" aria-hidden="true" />
         <div className="pointer-events-none absolute top-96 -left-24 -z-10 size-80 rounded-full bg-chart-1/20 blur-3xl" aria-hidden="true" />
 
@@ -266,13 +300,13 @@ export function GameScreen({ locale }: GameScreenProps) {
           <>
             <ScoreDisplay />
 
-            <section className="grid gap-4 lg:grid-cols-[0.82fr_1.18fr] lg:items-start" aria-label={game("gameBoardLabel")}>
-              <div className="space-y-4">
+            <section className="grid gap-3 lg:grid-cols-[0.82fr_1.18fr] lg:items-start" aria-label={game("gameBoardLabel")}>
+              <div className="space-y-3 sm:space-y-4">
                 <TurnIndicator botPlayback={botPlayback} />
                 <CheckoutSuggestions />
               </div>
 
-              <div className="space-y-4">
+              <div className="space-y-3 sm:space-y-4">
                 <div className="relative">
                   <ScoringInput className={cn(isBotTurn && "pointer-events-none opacity-60")} />
                   {isBotTurn ? (

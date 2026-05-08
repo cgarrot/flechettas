@@ -3,7 +3,7 @@
 import { ArrowLeft, Target } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -13,14 +13,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { modeMessageKeys } from "@/components/setup/mode-selector";
 
 import type { GameConfig, GameMode, GameState, KillerAssignment, TrainingFocus } from "@/types";
@@ -124,8 +116,6 @@ export function GameHeader({ locale, gameState }: GameHeaderProps) {
   const gameConfig = useTranslations("GameConfig");
   const misc = useTranslations("Misc");
   const modes = useTranslations("Modes");
-  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
-  const isGameInProgress = gameState?.phase === "playing";
   const modeLabel = gameState ? modes(modeLabelKey(gameState.mode)) : game("emptyMode");
   const configSummary = useMemo(() => {
     if (!gameState) {
@@ -139,27 +129,17 @@ export function GameHeader({ locale, gameState }: GameHeaderProps) {
     );
   }, [gameConfig, gameState, game, misc]);
 
-  function navigateHome() {
+  function handleBackToHome() {
     router.push(homeRouteFor(locale));
   }
 
-  function handleBackToHome() {
-    if (isGameInProgress) {
-      setIsConfirmOpen(true);
-      return;
-    }
-
-    navigateHome();
-  }
-
   return (
-    <>
-      <header className="grid gap-4 rounded-[2rem] border border-primary/20 bg-card/85 p-4 shadow-xl shadow-primary/10 backdrop-blur sm:p-6 lg:grid-cols-[auto_1fr] lg:items-center">
+    <header className="grid gap-3 rounded-[1.5rem] border border-primary/20 bg-card/85 p-3 shadow-xl shadow-primary/10 backdrop-blur sm:p-5 lg:grid-cols-[auto_1fr] lg:items-center">
         <Button
           type="button"
           variant="outline"
           size="lg"
-          className="min-h-12 justify-start rounded-xl border-primary/25"
+          className="min-h-10 justify-start rounded-xl border-primary/25 sm:min-h-12"
           data-testid="back-to-home"
           onClick={handleBackToHome}
         >
@@ -167,8 +147,8 @@ export function GameHeader({ locale, gameState }: GameHeaderProps) {
           {game("backToHome")}
         </Button>
 
-        <Card className="border-primary/15 bg-background/60 py-4 shadow-inner shadow-primary/5">
-          <CardHeader className="gap-3 px-4 sm:px-5">
+        <Card className="border-primary/15 bg-background/60 py-3 shadow-inner shadow-primary/5 sm:py-4">
+          <CardHeader className="gap-2 px-3 sm:gap-3 sm:px-5">
             <div className="flex flex-wrap items-center gap-2">
               <Badge variant="outline" className="bg-card/80 uppercase tracking-[0.18em] text-primary">
                 <Target className="size-3" aria-hidden="true" />
@@ -177,31 +157,13 @@ export function GameHeader({ locale, gameState }: GameHeaderProps) {
               <Badge variant="secondary">{modeLabel}</Badge>
             </div>
             <div className="space-y-1">
-              <CardTitle className="text-2xl tracking-tight sm:text-3xl">
+              <CardTitle className="text-xl tracking-tight sm:text-3xl">
                 {gameState ? game("headerTitle", { mode: modeLabel }) : game("emptyTitle")}
               </CardTitle>
-              <CardDescription className="leading-6">{configSummary}</CardDescription>
+              <CardDescription className="line-clamp-2 leading-5 sm:leading-6">{configSummary}</CardDescription>
             </div>
           </CardHeader>
         </Card>
       </header>
-
-      <Dialog open={isConfirmOpen} onOpenChange={setIsConfirmOpen}>
-        <DialogContent className="border-primary/20 bg-card/95 sm:rounded-2xl">
-          <DialogHeader>
-            <DialogTitle>{game("leaveTitle")}</DialogTitle>
-            <DialogDescription>{game("leaveDescription")}</DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setIsConfirmOpen(false)}>
-              {game("stayInGame")}
-            </Button>
-            <Button type="button" onClick={navigateHome}>
-              {game("leaveGame")}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </>
   );
 }

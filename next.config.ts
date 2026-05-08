@@ -19,6 +19,7 @@ const withSerwist = withSerwistInit({
 const nextConfig: NextConfig = {
   output: "standalone",
   reactStrictMode: true,
+  serverExternalPackages: ["better-sqlite3"],
 };
 
 export default withSerwist(withNextIntl(nextConfig));

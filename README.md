@@ -1,36 +1,52 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Fléchettas
+
+Fléchettas is a local-first darts scoring PWA built with Next.js. Shared sessions use a small SQLite database on the server so players can join the same game by code or URL without creating accounts.
 
 ## Getting Started
 
-First, run the development server:
+Install dependencies and run the development server:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
+pnpm install
 pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) with your browser.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+By default, local SQLite data is stored in `data/flechettas.sqlite`. You can override it with `SQLITE_PATH` or `DATABASE_PATH`:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+SQLITE_PATH=./data/flechettas.sqlite pnpm dev
+```
 
-## Learn More
+## SQLite deployment notes
 
-To learn more about Next.js, take a look at the following resources:
+Shared sessions are intentionally no-login: the session code is the capability token. Keep deployments single-writer and persistent:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- Run one Node.js app instance per SQLite database file.
+- Mount a persistent volume for the database directory.
+- Set `SQLITE_PATH` or `DATABASE_PATH` to a path inside that volume, for example `/data/flechettas.sqlite`.
+- Keep `HOSTNAME=0.0.0.0` when running the standalone Next server in Docker/Dokploy.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Recommended Dokploy environment:
 
-## Deploy on Vercel
+```bash
+NODE_ENV=production
+PORT=3000
+HOSTNAME=0.0.0.0
+SQLITE_PATH=/data/flechettas.sqlite
+NIXPACKS_NODE_VERSION=22
+NIXPACKS_INSTALL_CMD=pnpm install --frozen-lockfile --prod=false --config.optional=true --force
+NIXPACKS_BUILD_CMD=pnpm build && cp -r public .next/standalone/public && mkdir -p .next/standalone/.next && cp -r .next/static .next/standalone/.next/static
+NIXPACKS_START_CMD=node .next/standalone/server.js
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Mount `/data` as a persistent volume before enabling shared sessions in production. Do not scale the app horizontally against the same SQLite file unless a single-writer architecture is added.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Verification
+
+```bash
+pnpm exec tsc --noEmit
+pnpm lint
+pnpm build
+```

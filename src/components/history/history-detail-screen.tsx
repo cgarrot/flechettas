@@ -204,6 +204,8 @@ function eventNameKey(type: GameEvent["type"]): string {
       return "eventNames.roundAdvanced";
     case "match_won":
       return "eventNames.matchWon";
+    case "match_continued":
+      return "eventNames.matchContinued";
     case "undo":
       return "eventNames.undo";
   }
@@ -392,6 +394,7 @@ export function HistoryDetailScreen({ gameId, locale }: HistoryDetailScreenProps
       set_won: 0,
       round_advanced: 0,
       match_won: 0,
+      match_continued: 0,
       undo: 0,
     },
   );

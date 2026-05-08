@@ -286,7 +286,7 @@
     },
     "playerStepKicker": "Participants",
     "playerStepTitle": "Composez l'ordre de jeu",
-    "playerStepDescription": "Ajoutez jusqu'à {count} joueurs humains. Les DartBots peuvent compléter le match sans compter dans cette limite.",
+    "playerStepDescription": "Ajoutez jusqu'à {count} joueurs au total, humains et DartBots inclus.",
     "addPlayer": "Ajouter un joueur",
     "addBot": "Ajouter un DartBot",
     "removePlayer": "Retirer",
@@ -299,7 +299,7 @@
     "dartBots": "DartBots",
     "humanPlayers": "Joueurs humains",
     "humanLimitHint": "Limite: {count} humains maximum",
-    "botLimitHint": "Les bots ne comptent pas dans la limite humaine",
+    "botLimitHint": "Les DartBots comptent dans la limite totale de {count} joueurs",
     "botWithLevel": "Bot · {level}",
     "level": "Niveau",
     "startGame": "Démarrer la partie",
@@ -325,6 +325,7 @@
       "namesRequired": "Chaque participant doit avoir un nom.",
       "uniqueNames": "Chaque nom de participant doit être unique.",
       "humanLimit": "Vous pouvez ajouter {count} joueurs humains au maximum.",
+      "totalLimit": "Un match peut contenir {count} joueurs au total maximum.",
       "startFailed": "Impossible de créer la partie pour le moment. Vérifiez les réglages et réessayez."
     }
   },

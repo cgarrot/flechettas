@@ -28,7 +28,8 @@ import { botLevelMessageKeys, PlayerConfig } from "./player-config";
 
 import type { BotLevel, GameConfig, GameMode, PlayerDef } from "@/types";
 
-const MAX_HUMAN_PLAYERS = 4;
+const MAX_HUMAN_PLAYERS = 20;
+const MAX_TOTAL_PLAYERS = 20;
 const DEFAULT_BOT_LEVEL = 1 satisfies BotLevel;
 const STEP_IDS = ["mode", "players", "config", "review"] as const;
 
@@ -265,6 +266,10 @@ export function SetupFlow({ locale }: SetupFlowProps) {
     }));
     const humanCount = normalizedPlayers.filter((player) => !player.isBot).length;
 
+    if (normalizedPlayers.length > MAX_TOTAL_PLAYERS) {
+      return { valid: false, message: setup("errors.totalLimit", { count: MAX_TOTAL_PLAYERS }) };
+    }
+
     if (humanCount > MAX_HUMAN_PLAYERS) {
       return { valid: false, message: setup("errors.humanLimit", { count: MAX_HUMAN_PLAYERS }) };
     }
@@ -318,6 +323,11 @@ export function SetupFlow({ locale }: SetupFlowProps) {
   function addHumanPlayer() {
     const humanCount = players.filter((player) => !player.isBot).length;
 
+    if (players.length >= MAX_TOTAL_PLAYERS) {
+      setPlayerValidationMessage(setup("errors.totalLimit", { count: MAX_TOTAL_PLAYERS }));
+      return;
+    }
+
     if (humanCount >= MAX_HUMAN_PLAYERS) {
       setPlayerValidationMessage(setup("errors.humanLimit", { count: MAX_HUMAN_PLAYERS }));
       return;
@@ -337,6 +347,11 @@ export function SetupFlow({ locale }: SetupFlowProps) {
   }
 
   function addBotPlayer() {
+    if (players.length >= MAX_TOTAL_PLAYERS) {
+      setPlayerValidationMessage(setup("errors.totalLimit", { count: MAX_TOTAL_PLAYERS }));
+      return;
+    }
+
     const nextId = nextBotId.current;
     nextBotId.current += 1;
     setPlayerValidationMessage(null);
@@ -431,6 +446,7 @@ export function SetupFlow({ locale }: SetupFlowProps) {
               <PlayerConfig
                 players={players}
                 maxHumanPlayers={MAX_HUMAN_PLAYERS}
+                maxTotalPlayers={MAX_TOTAL_PLAYERS}
                 validationMessage={playerValidationMessage}
                 onAddHuman={addHumanPlayer}
                 onAddBot={addBotPlayer}

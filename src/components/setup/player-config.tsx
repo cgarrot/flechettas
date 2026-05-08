@@ -37,6 +37,7 @@ export const botLevelMessageKeys = {
 type PlayerConfigProps = Readonly<{
   players: readonly PlayerDef[];
   maxHumanPlayers: number;
+  maxTotalPlayers: number;
   validationMessage?: string | null;
   onAddHuman: () => void;
   onAddBot: () => void;
@@ -54,6 +55,7 @@ function botLevelFromValue(value: string): BotLevel {
 export function PlayerConfig({
   players,
   maxHumanPlayers,
+  maxTotalPlayers,
   validationMessage,
   onAddHuman,
   onAddBot,
@@ -65,7 +67,8 @@ export function PlayerConfig({
   const levels = useTranslations("DartBotLevels");
   const humanCount = players.filter((player) => !player.isBot).length;
   const botCount = players.length - humanCount;
-  const canAddHuman = humanCount < maxHumanPlayers;
+  const canAddPlayer = players.length < maxTotalPlayers;
+  const canAddHuman = canAddPlayer && humanCount < maxHumanPlayers;
 
   return (
     <section className="space-y-5" aria-labelledby="player-config-title">
@@ -79,7 +82,7 @@ export function PlayerConfig({
             {setup("playerStepTitle")}
           </h2>
           <p className="max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">
-            {setup("playerStepDescription", { count: maxHumanPlayers })}
+            {setup("playerStepDescription", { count: maxTotalPlayers })}
           </p>
         </div>
       </div>
@@ -104,7 +107,7 @@ export function PlayerConfig({
               <Bot className="size-4" aria-hidden="true" />
               {setup("dartBots")}
             </CardTitle>
-            <CardDescription>{setup("botLimitHint")}</CardDescription>
+            <CardDescription>{setup("botLimitHint", { count: maxTotalPlayers })}</CardDescription>
           </CardHeader>
           <CardContent>
             <Badge variant="secondary">{setup("botCount", { count: botCount })}</Badge>
@@ -130,6 +133,7 @@ export function PlayerConfig({
           variant="secondary"
           className="min-h-12 flex-1"
           data-testid="add-bot"
+          disabled={!canAddPlayer}
           onClick={onAddBot}
         >
           <Bot aria-hidden="true" />

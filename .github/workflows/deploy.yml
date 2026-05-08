@@ -1,0 +1,108 @@
+name: Deploy to Dokploy
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: dokploy-production
+  cancel-in-progress: false
+
+jobs:
+  verify-and-deploy:
+    name: Verify and deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+
+    env:
+      PRODUCTION_BASE_URL: http://93.127.158.112:3001
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --prod=false --config.optional=true
+
+      - name: Typecheck
+        run: pnpm exec tsc --noEmit
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Build
+        run: pnpm build
+
+      - name: Trigger Dokploy deploy
+        env:
+          DOKPLOY_DEPLOY_URL: ${{ secrets.DOKPLOY_DEPLOY_URL }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${DOKPLOY_DEPLOY_URL:-}" ]; then
+            echo "DOKPLOY_DEPLOY_URL secret is required."
+            exit 1
+          fi
+
+          changed_files_json=$(git diff-tree --no-commit-id --name-only -r "$GITHUB_SHA" | jq -R . | jq -s 'if length == 0 then ["."] else . end')
+          commit_message=$(git log -1 --pretty=%B)
+          payload=$(jq -n \
+            --arg ref "refs/heads/${GITHUB_REF_NAME}" \
+            --arg sha "$GITHUB_SHA" \
+            --arg message "$commit_message" \
+            --argjson modified "$changed_files_json" \
+            '{ref: $ref, head_commit: {id: $sha, message: $message}, commits: [{modified: $modified}]}')
+
+          response_file=$(mktemp)
+          status=$(curl -sS -o "$response_file" -w "%{http_code}" \
+            -X POST "$DOKPLOY_DEPLOY_URL" \
+            -H "Content-Type: application/json" \
+            -H "x-github-event: push" \
+            --data "$payload")
+
+          echo "Dokploy deploy status: $status"
+          cat "$response_file"
+          echo
+
+          if [ "$status" != "200" ]; then
+            exit 1
+          fi
+
+      - name: Wait for production API
+        run: |
+          set -euo pipefail
+
+          for attempt in $(seq 1 60); do
+            if curl -fsS \
+              -X POST "$PRODUCTION_BASE_URL/api/sessions" \
+              -H "Content-Type: application/json" \
+              --data '{}' >/tmp/flechettas-session-smoke.json; then
+              echo "Production shared-session API is ready."
+              cat /tmp/flechettas-session-smoke.json
+              echo
+              exit 0
+            fi
+
+            echo "Waiting for production deploy... attempt ${attempt}/60"
+            sleep 10
+          done
+
+          echo "Production API did not become ready in time."
+          exit 1

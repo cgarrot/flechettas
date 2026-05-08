@@ -78,7 +78,7 @@
     "bull": "Bull",
     "bullseye": "Bullseye",
     "undo": "Annuler le lancer",
-    "confirm": "Confirmer le score",
+    "confirm": "Marquer",
     "turnTotal": "Total du tour",
     "checkoutSuggestions": "Suggestions de checkout",
     "inputKicker": "Console de score",
@@ -172,7 +172,31 @@
     "matchStats": "Voir stats détaillées",
     "matchHome": "Enregistrer et rentrer",
     "matchSaving": "Enregistrement",
-    "matchRematch": "Rejouer"
+    "matchRematch": "Rejouer",
+    "matchContinue": "Continuer pour les autres"
+  },
+  "Session": {
+    "promptTitle": "Partager ce pupitre",
+    "promptDescription": "Saisissez un code de session ou créez-en un. Le jeu local reste possible sans code.",
+    "codeLabel": "Code de session partagée",
+    "codePlaceholder": "Code",
+    "join": "Rejoindre",
+    "create": "Créer",
+    "dismiss": "Masquer l'invite de session partagée",
+    "active": "Session partagée {code}",
+    "selectedPlayer": "Vous jouez avec {player}",
+    "selectPlayerHint": "Sélectionnez ou créez votre joueur avant le score partagé.",
+    "playerPlaceholder": "Choisir un joueur",
+    "playerNameLabel": "Nom du nouveau joueur de session",
+    "playerNamePlaceholder": "Nouveau joueur",
+    "addPlayer": "Ajouter joueur",
+    "change": "Changer",
+    "loadFailed": "Impossible de charger la session partagée.",
+    "createFailed": "Impossible de créer la session partagée.",
+    "playerCreateFailed": "Impossible d'ajouter le joueur.",
+    "setupPlayersTitle": "Joueurs de session",
+    "setupPlayersDescription": "Réutilisez les personnes déjà présentes dans la session partagée {code}.",
+    "addSetupPlayer": "Ajouter {player}"
   },
   "History": {
     "pageKicker": "Archive des matchs",
@@ -244,6 +268,7 @@
       "setWon": "Set gagné",
       "roundAdvanced": "Manche avancée",
       "matchWon": "Match gagné",
+      "matchContinued": "Match continué",
       "undo": "Annulation"
     }
   },

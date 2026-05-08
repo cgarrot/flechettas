@@ -8,6 +8,7 @@ import { BottomNav } from "@/components/layout/bottom-nav";
 import { InstallPrompt } from "@/components/pwa/install-prompt";
 import { OfflineIndicator } from "@/components/pwa/offline-indicator";
 import { UpdatePrompt } from "@/components/pwa/update-prompt";
+import { SessionGate } from "@/components/session/session-gate";
 import { ThemeProvider } from "@/components/theme/theme-provider";
 import { routing, type Locale } from "@/i18n/routing";
 
@@ -80,6 +81,7 @@ export default async function LocaleLayout({
                 <div className="pb-[calc(7rem+env(safe-area-inset-bottom))] md:pb-0">{children}</div>
               </div>
               <BottomNav locale={typedLocale} />
+              <SessionGate />
               <OfflineIndicator />
               <UpdatePrompt />
               <InstallPrompt />

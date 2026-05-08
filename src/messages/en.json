@@ -78,7 +78,7 @@
     "bull": "Bull",
     "bullseye": "Bullseye",
     "undo": "Undo dart",
-    "confirm": "Confirm score",
+    "confirm": "Score dart",
     "turnTotal": "Turn total",
     "checkoutSuggestions": "Checkout suggestions",
     "inputKicker": "Scoring console",
@@ -172,7 +172,31 @@
     "matchStats": "View detailed stats",
     "matchHome": "Save and go home",
     "matchSaving": "Saving",
-    "matchRematch": "Rematch"
+    "matchRematch": "Rematch",
+    "matchContinue": "Continue for others"
+  },
+  "Session": {
+    "promptTitle": "Share this match table",
+    "promptDescription": "Enter a session code or create one. Local play still works without it.",
+    "codeLabel": "Shared session code",
+    "codePlaceholder": "Code",
+    "join": "Join",
+    "create": "Create",
+    "dismiss": "Dismiss shared session prompt",
+    "active": "Shared session {code}",
+    "selectedPlayer": "Playing as {player}",
+    "selectPlayerHint": "Select or create your player before shared scoring.",
+    "playerPlaceholder": "Choose player",
+    "playerNameLabel": "New session player name",
+    "playerNamePlaceholder": "New player",
+    "addPlayer": "Add player",
+    "change": "Change",
+    "loadFailed": "The shared session could not be loaded.",
+    "createFailed": "The shared session could not be created.",
+    "playerCreateFailed": "The player could not be added.",
+    "setupPlayersTitle": "Session players",
+    "setupPlayersDescription": "Reuse people already present in shared session {code}.",
+    "addSetupPlayer": "Add {player}"
   },
   "History": {
     "pageKicker": "Match archive",
@@ -244,6 +268,7 @@
       "setWon": "Set won",
       "roundAdvanced": "Round advanced",
       "matchWon": "Match won",
+      "matchContinued": "Match continued",
       "undo": "Undo"
     }
   },

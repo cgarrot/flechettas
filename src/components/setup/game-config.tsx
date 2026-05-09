@@ -1,6 +1,6 @@
 "use client";
 
-import { SlidersHorizontal } from "lucide-react";
+import { CheckCircle2, Circle, Info, SlidersHorizontal } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { Badge } from "@/components/ui/badge";
@@ -100,7 +100,7 @@ export function createDefaultGameConfigs(): Record<GameMode, GameConfig> {
       matchFormat: defaultMatchFormat(),
       startingScore: 501,
       doubleIn: false,
-      doubleOut: true,
+      doubleOut: false,
       masterOut: false,
     },
     cricket: {
@@ -200,7 +200,12 @@ function ConfigField({ id, label, description, children }: FieldProps) {
         {label}
       </label>
       {children}
-      {description ? <p className="text-xs leading-5 text-muted-foreground">{description}</p> : null}
+      {description ? (
+        <p className="flex items-start gap-1.5 text-xs leading-4 text-muted-foreground">
+          <Info className="mt-0.5 size-3 shrink-0 text-primary" aria-hidden="true" />
+          <span>{description}</span>
+        </p>
+      ) : null}
     </div>
   );
 }
@@ -303,24 +308,39 @@ function toRequiredMultiplier(
   return fallback;
 }
 
-function boolValue(value: boolean | undefined): string {
-  return value ? "true" : "false";
-}
-
 function BooleanSelect({
   id,
+  label,
   testId,
   value,
   onValueChange,
 }: Readonly<{
   id: string;
+  label: string;
   testId: string;
   value: boolean | undefined;
   onValueChange: (value: boolean) => void;
 }>) {
   const misc = useTranslations("Misc");
+  const isPressed = value === true;
+  const stateLabel = misc(isPressed ? "yes" : "no");
 
-  return <ToggleGroup id={id} label={id} value={boolValue(value)} options={[{ value: "true", label: misc("yes") }, { value: "false", label: misc("no") }]} onValueChange={(nextValue) => onValueChange(nextValue === "true")} testId={testId} />;
+  return (
+    <Button
+      id={id}
+      type="button"
+      variant={isPressed ? "default" : "outline"}
+      size="sm"
+      className="min-h-9 w-full justify-start rounded-xl px-3 text-xs font-bold"
+      data-testid={testId}
+      aria-pressed={isPressed}
+      aria-label={`${label}: ${stateLabel}`}
+      onClick={() => onValueChange(!isPressed)}
+    >
+      {isPressed ? <CheckCircle2 className="size-4" aria-hidden="true" /> : <Circle className="size-4" aria-hidden="true" />}
+      {stateLabel}
+    </Button>
+  );
 }
 
 function withLegsToWin<TConfig extends GameConfig>(
@@ -385,7 +405,7 @@ export function GameConfigForm({ config, onConfigChange }: GameConfigFormProps) 
         </CardHeader>
         <CardContent className="space-y-4 p-3 pt-0">
           <div className="grid gap-3 sm:grid-cols-2">
-            <ConfigField id="config-legsToWin" label={gameConfig("legsToWin")}>
+            <ConfigField id="config-legsToWin" label={gameConfig("legsToWin")} description={gameConfig("help.legsToWin")}>
               <Input
                 id="config-legsToWin"
                 data-testid="config-legsToWin"
@@ -403,7 +423,7 @@ export function GameConfigForm({ config, onConfigChange }: GameConfigFormProps) 
                 }}
               />
             </ConfigField>
-            <ConfigField id="config-setsToWin" label={gameConfig("setsToWin")}>
+            <ConfigField id="config-setsToWin" label={gameConfig("setsToWin")} description={gameConfig("help.setsToWin")}>
               <Input
                 id="config-setsToWin"
                 data-testid="config-setsToWin"
@@ -428,7 +448,7 @@ export function GameConfigForm({ config, onConfigChange }: GameConfigFormProps) 
           <div className="grid gap-3 sm:grid-cols-2">
             {config.mode === "x01" ? (
               <>
-                <ConfigField id="config-startingScore" label={gameConfig("startScore")}>
+                <ConfigField id="config-startingScore" label={gameConfig("startScore")} description={gameConfig("help.startScore")}>
                   <ToggleGroup
                     id="config-startingScore"
                     label={gameConfig("startScore")}
@@ -439,21 +459,21 @@ export function GameConfigForm({ config, onConfigChange }: GameConfigFormProps) 
                     columns={3}
                   />
                 </ConfigField>
-                <ConfigField id="config-doubleIn" label={gameConfig("doubleIn")}>
-                  <BooleanSelect id="config-doubleIn" testId="config-doubleIn" value={config.doubleIn} onValueChange={(value) => onConfigChange({ ...config, doubleIn: value })} />
+                <ConfigField id="config-doubleIn" label={gameConfig("doubleIn")} description={gameConfig("help.doubleIn")}>
+                  <BooleanSelect id="config-doubleIn" label={gameConfig("doubleIn")} testId="config-doubleIn" value={config.doubleIn} onValueChange={(value) => onConfigChange({ ...config, doubleIn: value })} />
                 </ConfigField>
-                <ConfigField id="config-doubleOut" label={gameConfig("doubleOut")}>
-                  <BooleanSelect id="config-doubleOut" testId="config-doubleOut" value={config.doubleOut} onValueChange={(value) => onConfigChange({ ...config, doubleOut: value })} />
+                <ConfigField id="config-doubleOut" label={gameConfig("doubleOut")} description={gameConfig("help.doubleOut")}>
+                  <BooleanSelect id="config-doubleOut" label={gameConfig("doubleOut")} testId="config-doubleOut" value={config.doubleOut} onValueChange={(value) => onConfigChange({ ...config, doubleOut: value })} />
                 </ConfigField>
-                <ConfigField id="config-masterOut" label={gameConfig("masterOut")}>
-                  <BooleanSelect id="config-masterOut" testId="config-masterOut" value={config.masterOut} onValueChange={(value) => onConfigChange({ ...config, masterOut: value })} />
+                <ConfigField id="config-masterOut" label={gameConfig("masterOut")} description={gameConfig("help.masterOut")}>
+                  <BooleanSelect id="config-masterOut" label={gameConfig("masterOut")} testId="config-masterOut" value={config.masterOut} onValueChange={(value) => onConfigChange({ ...config, masterOut: value })} />
                 </ConfigField>
               </>
             ) : null}
 
             {config.mode === "cricket" ? (
               <>
-                <ConfigField id="config-variant" label={gameConfig("variant")}>
+                <ConfigField id="config-variant" label={gameConfig("variant")} description={gameConfig("help.variant")}>
                   <ToggleGroup
                     id="config-variant"
                     label={gameConfig("variant")}
@@ -468,10 +488,10 @@ export function GameConfigForm({ config, onConfigChange }: GameConfigFormProps) 
                     columns={3}
                   />
                 </ConfigField>
-                <ConfigField id="config-scorePoints" label={gameConfig("scorePoints")}>
-                  <BooleanSelect id="config-scorePoints" testId="config-scorePoints" value={config.scorePoints} onValueChange={(value) => onConfigChange({ ...config, scorePoints: value })} />
+                <ConfigField id="config-scorePoints" label={gameConfig("scorePoints")} description={gameConfig("help.scorePoints")}>
+                  <BooleanSelect id="config-scorePoints" label={gameConfig("scorePoints")} testId="config-scorePoints" value={config.scorePoints} onValueChange={(value) => onConfigChange({ ...config, scorePoints: value })} />
                 </ConfigField>
-                <ConfigField id="config-pointsRequiredToWin" label={gameConfig("pointsRequiredToWin")}>
+                <ConfigField id="config-pointsRequiredToWin" label={gameConfig("pointsRequiredToWin")} description={gameConfig("help.pointsRequiredToWin")}>
                   <Input
                     id="config-pointsRequiredToWin"
                     data-testid="config-pointsRequiredToWin"
@@ -487,7 +507,7 @@ export function GameConfigForm({ config, onConfigChange }: GameConfigFormProps) 
 
             {config.mode === "around-the-clock" ? (
               <>
-                <ConfigField id="config-startSegment" label={gameConfig("startSegment")}>
+                <ConfigField id="config-startSegment" label={gameConfig("startSegment")} description={gameConfig("help.startSegment")}>
                   <Select
                     value={String(config.startSegment)}
                     onValueChange={(value) => onConfigChange({ ...config, startSegment: toNumberSegment(value, config.startSegment) })}
@@ -502,7 +522,7 @@ export function GameConfigForm({ config, onConfigChange }: GameConfigFormProps) 
                     </SelectContent>
                   </Select>
                 </ConfigField>
-                <ConfigField id="config-endSegment" label={gameConfig("endSegment")}>
+                <ConfigField id="config-endSegment" label={gameConfig("endSegment")} description={gameConfig("help.endSegment")}>
                   <Select
                     value={String(config.endSegment)}
                     onValueChange={(value) => onConfigChange({ ...config, endSegment: value === "25" ? 25 : toNumberSegment(value, config.endSegment === 25 ? 20 : config.endSegment) })}
@@ -518,7 +538,7 @@ export function GameConfigForm({ config, onConfigChange }: GameConfigFormProps) 
                     </SelectContent>
                   </Select>
                 </ConfigField>
-                <ConfigField id="config-requiredMultiplier" label={gameConfig("requiredMultiplier")}>
+                <ConfigField id="config-requiredMultiplier" label={gameConfig("requiredMultiplier")} description={gameConfig("help.requiredMultiplier")}>
                   <ToggleGroup
                     id="config-requiredMultiplier"
                     label={gameConfig("requiredMultiplier")}
@@ -534,21 +554,21 @@ export function GameConfigForm({ config, onConfigChange }: GameConfigFormProps) 
                     columns={4}
                   />
                 </ConfigField>
-                <ConfigField id="config-includeBull" label={gameConfig("includeBull")}>
-                  <BooleanSelect id="config-includeBull" testId="config-includeBull" value={config.includeBull} onValueChange={(value) => onConfigChange({ ...config, includeBull: value })} />
+                <ConfigField id="config-includeBull" label={gameConfig("includeBull")} description={gameConfig("help.includeBull")}>
+                  <BooleanSelect id="config-includeBull" label={gameConfig("includeBull")} testId="config-includeBull" value={config.includeBull} onValueChange={(value) => onConfigChange({ ...config, includeBull: value })} />
                 </ConfigField>
               </>
             ) : null}
 
             {config.mode === "bobs-27" ? (
-              <ConfigField id="config-allowNegativeScore" label={gameConfig("allowNegativeScore")}>
-                <BooleanSelect id="config-allowNegativeScore" testId="config-allowNegativeScore" value={config.allowNegativeScore} onValueChange={(value) => onConfigChange({ ...config, allowNegativeScore: value })} />
+              <ConfigField id="config-allowNegativeScore" label={gameConfig("allowNegativeScore")} description={gameConfig("help.allowNegativeScore")}>
+                <BooleanSelect id="config-allowNegativeScore" label={gameConfig("allowNegativeScore")} testId="config-allowNegativeScore" value={config.allowNegativeScore} onValueChange={(value) => onConfigChange({ ...config, allowNegativeScore: value })} />
               </ConfigField>
             ) : null}
 
             {config.mode === "checkout-121" ? (
               <>
-                <ConfigField id="config-dartsPerTarget" label={gameConfig("dartsPerTarget")}>
+                <ConfigField id="config-dartsPerTarget" label={gameConfig("dartsPerTarget")} description={gameConfig("help.dartsPerTarget")}>
                   <ToggleGroup
                     id="config-dartsPerTarget"
                     label={gameConfig("dartsPerTarget")}
@@ -562,7 +582,7 @@ export function GameConfigForm({ config, onConfigChange }: GameConfigFormProps) 
                     columns={3}
                   />
                 </ConfigField>
-                <ConfigField id="config-successStep" label={gameConfig("successStep")}>
+                <ConfigField id="config-successStep" label={gameConfig("successStep")} description={gameConfig("help.successStep")}>
                   <Input
                     id="config-successStep"
                     data-testid="config-successStep"
@@ -573,7 +593,7 @@ export function GameConfigForm({ config, onConfigChange }: GameConfigFormProps) 
                     onChange={(event) => onConfigChange({ ...config, successStep: parsePositiveInteger(event.target.value, config.successStep, 1, 25) })}
                   />
                 </ConfigField>
-                <ConfigField id="config-failureStep" label={gameConfig("failureStep")}>
+                <ConfigField id="config-failureStep" label={gameConfig("failureStep")} description={gameConfig("help.failureStep")}>
                   <Input
                     id="config-failureStep"
                     data-testid="config-failureStep"
@@ -588,14 +608,14 @@ export function GameConfigForm({ config, onConfigChange }: GameConfigFormProps) 
             ) : null}
 
             {config.mode === "shanghai" ? (
-              <ConfigField id="config-instantShanghaiWin" label={gameConfig("instantShanghaiWin")}>
-                <BooleanSelect id="config-instantShanghaiWin" testId="config-instantShanghaiWin" value={config.instantShanghaiWin} onValueChange={(value) => onConfigChange({ ...config, instantShanghaiWin: value })} />
+              <ConfigField id="config-instantShanghaiWin" label={gameConfig("instantShanghaiWin")} description={gameConfig("help.instantShanghaiWin")}>
+                <BooleanSelect id="config-instantShanghaiWin" label={gameConfig("instantShanghaiWin")} testId="config-instantShanghaiWin" value={config.instantShanghaiWin} onValueChange={(value) => onConfigChange({ ...config, instantShanghaiWin: value })} />
               </ConfigField>
             ) : null}
 
             {config.mode === "training" ? (
               <>
-                <ConfigField id="config-trainingFocus" label={gameConfig("trainingFocus")}>
+                <ConfigField id="config-trainingFocus" label={gameConfig("trainingFocus")} description={gameConfig("help.trainingFocus")}>
                   <ToggleGroup
                     id="config-trainingFocus"
                     label={gameConfig("trainingFocus")}
@@ -606,7 +626,7 @@ export function GameConfigForm({ config, onConfigChange }: GameConfigFormProps) 
                     columns={3}
                   />
                 </ConfigField>
-                <ConfigField id="config-rounds" label={gameConfig("rounds")}>
+                <ConfigField id="config-rounds" label={gameConfig("rounds")} description={gameConfig("help.rounds")}>
                   <Input
                     id="config-rounds"
                     data-testid="config-rounds"
@@ -617,7 +637,7 @@ export function GameConfigForm({ config, onConfigChange }: GameConfigFormProps) 
                     onChange={(event) => onConfigChange({ ...config, rounds: parsePositiveInteger(event.target.value, config.rounds ?? 1, 1, 20) })}
                   />
                 </ConfigField>
-                <ConfigField id="config-hitsRequiredToAdvance" label={gameConfig("hitsRequiredToAdvance")}>
+                <ConfigField id="config-hitsRequiredToAdvance" label={gameConfig("hitsRequiredToAdvance")} description={gameConfig("help.hitsRequiredToAdvance")}>
                   <ToggleGroup
                     id="config-hitsRequiredToAdvance"
                     label={gameConfig("hitsRequiredToAdvance")}
@@ -636,7 +656,7 @@ export function GameConfigForm({ config, onConfigChange }: GameConfigFormProps) 
 
             {config.mode === "killer" ? (
               <>
-                <ConfigField id="config-startingLives" label={gameConfig("startingLives")}>
+                <ConfigField id="config-startingLives" label={gameConfig("startingLives")} description={gameConfig("help.startingLives")}>
                   <Input
                     id="config-startingLives"
                     data-testid="config-startingLives"
@@ -647,7 +667,7 @@ export function GameConfigForm({ config, onConfigChange }: GameConfigFormProps) 
                     onChange={(event) => onConfigChange({ ...config, startingLives: parsePositiveInteger(event.target.value, config.startingLives, 1, 20) })}
                   />
                 </ConfigField>
-                <ConfigField id="config-assignment" label={gameConfig("assignment")}>
+                <ConfigField id="config-assignment" label={gameConfig("assignment")} description={gameConfig("help.assignment")}>
                   <ToggleGroup
                     id="config-assignment"
                     label={gameConfig("assignment")}
@@ -658,7 +678,7 @@ export function GameConfigForm({ config, onConfigChange }: GameConfigFormProps) 
                     columns={4}
                   />
                 </ConfigField>
-                <ConfigField id="config-requiredHitsToBecomeKiller" label={gameConfig("requiredHitsToBecomeKiller")}>
+                <ConfigField id="config-requiredHitsToBecomeKiller" label={gameConfig("requiredHitsToBecomeKiller")} description={gameConfig("help.requiredHitsToBecomeKiller")}>
                   <Input
                     id="config-requiredHitsToBecomeKiller"
                     data-testid="config-requiredHitsToBecomeKiller"
@@ -669,8 +689,8 @@ export function GameConfigForm({ config, onConfigChange }: GameConfigFormProps) 
                     onChange={(event) => onConfigChange({ ...config, requiredHitsToBecomeKiller: parsePositiveInteger(event.target.value, config.requiredHitsToBecomeKiller, 1, 5) })}
                   />
                 </ConfigField>
-                <ConfigField id="config-allowSharedNumbers" label={gameConfig("allowSharedNumbers")}>
-                  <BooleanSelect id="config-allowSharedNumbers" testId="config-allowSharedNumbers" value={config.allowSharedNumbers} onValueChange={(value) => onConfigChange({ ...config, allowSharedNumbers: value })} />
+                <ConfigField id="config-allowSharedNumbers" label={gameConfig("allowSharedNumbers")} description={gameConfig("help.allowSharedNumbers")}>
+                  <BooleanSelect id="config-allowSharedNumbers" label={gameConfig("allowSharedNumbers")} testId="config-allowSharedNumbers" value={config.allowSharedNumbers} onValueChange={(value) => onConfigChange({ ...config, allowSharedNumbers: value })} />
                 </ConfigField>
               </>
             ) : null}

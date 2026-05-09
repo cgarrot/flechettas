@@ -217,46 +217,45 @@ export function PlayerConfig({
             </div>
           ) : null}
 
-          <div className="grid max-h-72 gap-2 overflow-y-auto pr-1">
+          <div className="flex max-h-72 flex-wrap gap-2 overflow-y-auto pr-1">
             {players.map((player, index) => {
               const playerNumber = index + 1;
               const playerInputId = `player-name-${player.id}`;
               const botLevelId = `bot-level-${player.id}`;
+              const fallbackName = setup("playerNameFor", { number: playerNumber });
 
               return (
-                <div key={player.id} className="grid gap-2 rounded-xl border border-border/70 bg-card/80 p-2 sm:grid-cols-[1fr_auto] sm:items-end">
-                <div className="grid gap-2 sm:grid-cols-[1fr_11rem] sm:items-end">
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                      <Badge variant={player.isBot ? "secondary" : "outline"}>
-                        {player.isBot ? setup("bot") : setup("human")}
-                      </Badge>
-                      <label htmlFor={playerInputId} className="text-sm font-medium">
-                        {setup("playerNameFor", { number: playerNumber })}
-                      </label>
-                    </div>
+                <div key={player.id} className="flex min-h-10 max-w-full items-center gap-1.5 rounded-full border border-border/70 bg-card/80 py-1 pr-1.5 pl-2 shadow-sm shadow-primary/5">
+                  <Badge variant={player.isBot ? "secondary" : "outline"} className="h-7 px-2">
+                    {playerNumber}. {player.isBot ? setup("bot") : setup("human")}
+                  </Badge>
+
+                  <div className="min-w-0">
+                    <label htmlFor={playerInputId} className="sr-only">
+                      {fallbackName}
+                    </label>
                     <Input
                       id={playerInputId}
                       data-testid={`player-name-${playerNumber}`}
                       value={player.name}
                       autoComplete="off"
                       placeholder={setup("playerName")}
-                      className="min-h-10 bg-background/65"
+                      className="h-8 min-h-8 w-28 rounded-full border-transparent bg-transparent px-1 text-sm shadow-none focus-visible:border-ring sm:w-32"
                       disabled={sessionBackedHumans && !player.isBot}
                       onChange={(event) => onRenamePlayer(player.id, event.target.value)}
                     />
                   </div>
 
                   {player.isBot ? (
-                    <div className="space-y-2">
-                      <label htmlFor={botLevelId} className="text-sm font-medium">
+                    <div>
+                      <label htmlFor={botLevelId} className="sr-only">
                         {setup("botLevelFor", { number: playerNumber })}
                       </label>
                       <Select
                         value={String(player.botLevel ?? 1)}
                         onValueChange={(value) => onBotLevelChange(player.id, botLevelFromValue(value))}
                       >
-                        <SelectTrigger id={botLevelId} data-testid={`bot-level-${playerNumber}`} className="min-h-10 w-full bg-background/65">
+                        <SelectTrigger id={botLevelId} data-testid={`bot-level-${playerNumber}`} className="h-8 min-h-8 w-32 rounded-full bg-background/65 px-2 text-xs">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -269,21 +268,20 @@ export function PlayerConfig({
                       </Select>
                     </div>
                   ) : null}
-                </div>
 
-                {sessionBackedHumans && !player.isBot ? null : (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="min-h-10 sm:px-4"
-                    aria-label={setup("removePlayerA11y", { name: player.name || setup("playerNameFor", { number: playerNumber }) })}
-                    onClick={() => onRemovePlayer(player.id)}
-                  >
-                    <X aria-hidden="true" />
-                    <span className="sm:sr-only">{setup("removePlayer")}</span>
-                  </Button>
-                )}
+                  {sessionBackedHumans && !player.isBot ? null : (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon-xs"
+                      className="size-8 min-h-8 rounded-full text-muted-foreground hover:text-destructive"
+                      aria-label={setup("removePlayerA11y", { name: player.name || fallbackName })}
+                      onClick={() => onRemovePlayer(player.id)}
+                    >
+                      <X aria-hidden="true" />
+                      <span className="sr-only">{setup("removePlayer")}</span>
+                    </Button>
+                  )}
                 </div>
               );
             })}

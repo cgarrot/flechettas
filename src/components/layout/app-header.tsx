@@ -1,6 +1,7 @@
 "use client";
 
-import { ArrowLeft, Target } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { usePathname } from "next/navigation";
@@ -81,21 +82,27 @@ export function AppHeader({ locale }: AppHeaderProps) {
             )
           ) : null}
 
-            <Link
+          <Link
             href={homeRouteFor(locale)}
-              className={cn("flex min-h-11 min-w-11 items-center gap-3 rounded-2xl border border-primary/25 bg-card/90 px-3 py-2 shadow-lg shadow-primary/10 transition-[border-color,background-color,box-shadow] hover:border-primary/45 hover:bg-card", isScoring && "hidden sm:flex")}
+            className={cn("flex min-h-11 min-w-11 items-center gap-3 rounded-2xl border border-primary/25 bg-card/90 px-3 py-2 shadow-lg shadow-primary/10 transition-[border-color,background-color,box-shadow] hover:border-primary/45 hover:bg-card", isScoring && "hidden sm:flex")}
             data-testid="app-header-brand"
           >
-            <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-primary text-primary-foreground shadow-lg shadow-primary/25" aria-hidden="true">
-              <Target className="size-4" />
+            <span className="grid size-9 shrink-0 place-items-center overflow-hidden rounded-xl bg-primary shadow-lg shadow-primary/25" aria-hidden="true">
+              <Image
+                src="/icon-192.png"
+                alt=""
+                width={36}
+                height={36}
+                className="size-9 object-cover"
+              />
             </span>
             <span className="truncate text-sm font-black tracking-tight sm:text-base">Fléchettas</span>
           </Link>
         </div>
 
         <div className={cn("flex shrink-0 items-center gap-2", isScoring && "gap-1.5 sm:gap-2")}>
-          <SessionGate locale={locale} />
           <ThemeToggle />
+          <SessionGate locale={locale} />
         </div>
       </div>
     </header>

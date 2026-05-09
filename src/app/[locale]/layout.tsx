@@ -5,10 +5,10 @@ import { notFound } from "next/navigation";
 
 import { AppHeader } from "@/components/layout/app-header";
 import { BottomNav } from "@/components/layout/bottom-nav";
+import { RouteContent } from "@/components/layout/route-content";
 import { InstallPrompt } from "@/components/pwa/install-prompt";
 import { OfflineIndicator } from "@/components/pwa/offline-indicator";
 import { UpdatePrompt } from "@/components/pwa/update-prompt";
-import { SessionGate } from "@/components/session/session-gate";
 import { ThemeProvider } from "@/components/theme/theme-provider";
 import { routing, type Locale } from "@/i18n/routing";
 
@@ -79,10 +79,9 @@ export default async function LocaleLayout({
             <div className="min-h-dvh bg-background text-foreground">
               <div className="md:pl-24">
                 <AppHeader locale={typedLocale} />
-                <div className="pb-[calc(7rem+env(safe-area-inset-bottom))] md:pb-0">{children}</div>
+                <RouteContent>{children}</RouteContent>
               </div>
               <BottomNav locale={typedLocale} />
-              <SessionGate />
               <OfflineIndicator />
               <UpdatePrompt />
               <InstallPrompt />

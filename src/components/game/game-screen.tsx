@@ -281,8 +281,8 @@ export function GameScreen({ locale }: GameScreenProps) {
   const isBotTurn = Boolean(activePlayer?.isBot && gameState?.phase === "playing");
 
   return (
-    <main className="min-h-[calc(100dvh-4rem)] overflow-x-hidden bg-transparent px-2 pt-1 pb-[calc(1rem+env(safe-area-inset-bottom))] text-foreground sm:px-6 sm:py-6 md:pb-0 lg:px-8">
-      <section className="relative mx-auto flex max-w-7xl flex-col gap-1.5 sm:gap-6">
+    <main className="h-[calc(100dvh-3.75rem-env(safe-area-inset-top))] overflow-hidden bg-transparent px-2 pt-1 pb-[calc(0.5rem+env(safe-area-inset-bottom))] text-foreground sm:h-auto sm:min-h-[calc(100dvh-4rem)] sm:overflow-x-hidden sm:px-6 sm:py-6 md:pb-0 lg:px-8">
+      <section className="relative mx-auto flex h-full max-w-7xl flex-col gap-1.5 sm:h-auto sm:gap-6">
         <div className="pointer-events-none absolute -top-28 right-4 -z-10 size-72 rounded-full bg-chart-2/25 blur-3xl" aria-hidden="true" />
         <div className="pointer-events-none absolute top-96 -left-24 -z-10 size-80 rounded-full bg-chart-1/20 blur-3xl" aria-hidden="true" />
 
@@ -298,7 +298,7 @@ export function GameScreen({ locale }: GameScreenProps) {
           <>
             <ScoreDisplay />
 
-            <section className="grid gap-1.5 lg:grid-cols-[0.82fr_1.18fr] lg:items-start lg:gap-3" aria-label={game("gameBoardLabel")}>
+            <section className="grid min-h-0 flex-1 gap-1.5 lg:grid-cols-[0.82fr_1.18fr] lg:items-start lg:gap-3" aria-label={game("gameBoardLabel")}>
               <div className="space-y-2 sm:space-y-4">
                 <TurnIndicator botPlayback={botPlayback} />
                 <CheckoutSuggestions className="hidden sm:block" />

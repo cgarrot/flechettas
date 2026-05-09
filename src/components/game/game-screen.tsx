@@ -118,7 +118,6 @@ export function GameScreen({ locale }: GameScreenProps) {
   const refreshSharedActiveGame = useGameStore((state) => state.refreshSharedActiveGame);
   const throwDart = useGameStore((state) => state.throwDart);
   const sharedSessionCode = useGameStore((state) => state.sharedSessionCode);
-  const sharedSessionPlayerId = useGameStore((state) => state.sharedSessionPlayerId);
   const [hasCheckedResume, setHasCheckedResume] = useState(false);
   const [botPlayback, setBotPlayback] = useState<BotPlaybackState | null>(null);
   const activeBotTurnKey = useRef<string | null>(null);
@@ -190,13 +189,6 @@ export function GameScreen({ locale }: GameScreenProps) {
       !currentActivePlayer.isBot ||
       currentState.currentTurn.length > 0
     ) {
-      return;
-    }
-
-    if (sharedSessionCode && sharedSessionPlayerId) {
-      // Shared-session V1 disables bot autoplay once a device has selected a
-      // session player. That keeps bot turns single-writer and avoids two open
-      // scorers generating duplicate bot darts.
       return;
     }
 
@@ -277,8 +269,6 @@ export function GameScreen({ locale }: GameScreenProps) {
     gameId,
     gamePhase,
     throwDart,
-    sharedSessionCode,
-    sharedSessionPlayerId,
   ]);
 
   const isBotTurn = Boolean(activePlayer?.isBot && gameState?.phase === "playing");

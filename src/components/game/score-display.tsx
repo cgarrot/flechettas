@@ -8,7 +8,6 @@ import {
   Card,
   CardContent,
   CardDescription,
-  CardHeader,
   CardTitle,
 } from "@/components/ui/card";
 import { formatDart } from "@/engine";
@@ -76,6 +75,10 @@ function formattedTurn(player: PlayerState, emptyLabel: string): string {
   return player.currentTurn.map(formatDart).join(" · ");
 }
 
+function isPlayerState(player: PlayerState | undefined): player is PlayerState {
+  return player !== undefined;
+}
+
 export function ScoreDisplay({ className }: ScoreDisplayProps) {
   const scoring = useTranslations("Scoring");
   const gameState = useGameStore((state) => state.gameState);
@@ -90,92 +93,126 @@ export function ScoreDisplay({ className }: ScoreDisplayProps) {
     );
   }
 
+  const activePlayer = gameState.players.find((player) => player.id === gameState.activePlayerId);
+
+  if (!activePlayer) {
+    return (
+      <Card className={cn("border-dashed border-primary/20 bg-card/75", className)}>
+        <CardContent className="py-8 text-center text-sm text-muted-foreground">
+          {scoring("noActiveGame")}
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const activePlayerIndex = gameState.players.findIndex((player) => player.id === activePlayer.id);
+  const activeOrderIndex = gameState.playerOrder.indexOf(activePlayer.id);
+  const orderedWaitingPlayers = activeOrderIndex >= 0
+    ? [
+      ...gameState.playerOrder.slice(activeOrderIndex + 1),
+      ...gameState.playerOrder.slice(0, activeOrderIndex),
+    ]
+      .map((playerId) => gameState.players.find((player) => player.id === playerId))
+      .filter(isPlayerState)
+    : gameState.players.filter((player) => player.id !== activePlayer.id);
+  const activePrimaryMetric = primaryMetricFor(activePlayer, (key) => scoring(key));
+  const activeSecondaryMetric = secondaryMetricFor(activePlayer, (key) => scoring(key));
+
   return (
     <section className={cn("space-y-1.5 sm:space-y-4", className)} aria-labelledby="score-display-title">
-      <div className="hidden flex-wrap items-center justify-between gap-3 sm:flex">
-        <div className="space-y-1">
-          <Badge variant="outline" className="bg-background/70 uppercase tracking-[0.18em] text-primary">
-            <Activity className="size-3" aria-hidden="true" />
-            {scoring("scoreboardKicker")}
-          </Badge>
-          <h2 className="text-xl font-black tracking-tight sm:text-3xl">
-            {scoring("scoreboardTitle")}
-          </h2>
-        </div>
-        <Badge variant="secondary">
-          {scoring("legSetCounter", { leg: gameState.currentLeg, set: gameState.currentSet })}
-        </Badge>
-      </div>
       <h2 id="score-display-title" className="sr-only">
         {scoring("scoreboardTitle")}
       </h2>
 
-      <div className="grid grid-cols-2 gap-1.5 md:grid-cols-4 md:gap-3">
-        {gameState.players.map((player, index) => {
-          const isActive = player.id === gameState.activePlayerId;
-          const primaryMetric = primaryMetricFor(player, (key) => scoring(key));
-          const secondaryMetric = secondaryMetricFor(player, (key) => scoring(key));
+      <Card className="overflow-hidden border-primary/20 bg-card/95 py-0 shadow-2xl shadow-primary/10">
+        <CardContent className="grid grid-cols-[0.88fr_1.12fr] gap-1.5 p-2 sm:gap-4 sm:p-5 lg:grid-cols-[0.8fr_1.2fr]">
+          <div className="min-w-0 rounded-2xl border border-border/70 bg-background/60 p-2 sm:p-4">
+            <div className="mb-2 flex items-center justify-between gap-2 sm:mb-3">
+              <Badge variant="outline" className="bg-card/80 text-[0.62rem] uppercase tracking-[0.14em] text-primary sm:text-xs">
+                <Activity className="size-3" aria-hidden="true" />
+                {scoring("upNext")}
+              </Badge>
+              <Badge variant="secondary" className="hidden text-[0.65rem] sm:inline-flex sm:text-xs">
+                {scoring("legSetCounter", { leg: gameState.currentLeg, set: gameState.currentSet })}
+              </Badge>
+            </div>
 
-          return (
-            <Card
-              key={player.id}
-              className={cn(
-                "overflow-hidden border-border/70 bg-card/90 py-0 shadow-lg shadow-primary/5 transition-[border-color,background-color,box-shadow,transform] duration-200",
-                isActive && "border-primary/70 bg-primary/15 shadow-2xl shadow-primary/20",
-              )}
-            >
-              <CardHeader className="border-b border-border/70 bg-background/55 p-2 sm:p-5">
-                <div className="flex flex-col gap-1 sm:gap-3">
-                  <div className="space-y-1">
-                    <CardTitle className="flex min-w-0 items-center gap-1.5 text-sm sm:text-xl">
-                      {isActive ? <Crown className="size-4 shrink-0 text-primary sm:size-5" aria-hidden="true" /> : null}
-                      <span className="truncate">{player.name}</span>
-                    </CardTitle>
-                    <CardDescription className="hidden text-[0.65rem] sm:block sm:text-sm">
-                      {isActive ? scoring("currentPlayer") : scoring("waitingPlayer")}
-                    </CardDescription>
-                  </div>
-                  <Badge variant={isActive ? "default" : "outline"} className="hidden max-w-full text-[0.65rem] sm:inline-flex sm:text-xs">
-                    {player.isBot ? scoring("botPlayer") : scoring("humanPlayer")}
-                  </Badge>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-2 p-2 sm:space-y-4 sm:p-5">
-                <div className="grid gap-1 sm:gap-3">
-                  <div className="min-w-0">
-                    <p className="text-[0.62rem] font-bold uppercase tracking-[0.12em] text-muted-foreground sm:text-sm sm:tracking-[0.14em]">{primaryMetric.label}</p>
-                    <p
-                      className="font-mono text-5xl font-black leading-none tracking-tight text-foreground min-[360px]:text-6xl sm:text-7xl"
-                      data-testid={`score-player-${index + 1}`}
-                    >
+            <div className="grid max-h-36 gap-1.5 overflow-y-auto pr-0.5 sm:max-h-56 sm:gap-2">
+              {orderedWaitingPlayers.length > 0 ? orderedWaitingPlayers.map((player, index) => {
+                const primaryMetric = primaryMetricFor(player, (key) => scoring(key));
+                const playerIndex = gameState.players.findIndex((candidate) => candidate.id === player.id);
+
+                return (
+                  <div key={player.id} className="grid grid-cols-[1.35rem_1fr_auto] items-center gap-1.5 rounded-xl border border-border/70 bg-card/80 px-2 py-1.5 sm:grid-cols-[2rem_1fr_auto] sm:gap-3 sm:px-3 sm:py-2">
+                    <span className="grid size-5 place-items-center rounded-full bg-muted text-[0.65rem] font-black text-muted-foreground sm:size-7 sm:text-xs">
+                      {index + 1}
+                    </span>
+                    <div className="min-w-0">
+                      <p className="truncate text-xs font-semibold sm:text-sm">{player.name}</p>
+                      <p className="hidden text-[0.68rem] text-muted-foreground sm:block">{primaryMetric.label}</p>
+                    </div>
+                    <p className="font-mono text-lg font-black leading-none sm:text-2xl" data-testid={`score-player-${playerIndex + 1}`}>
                       {primaryMetric.value}
                     </p>
                   </div>
-                  <div className="flex items-center justify-between gap-2 rounded-xl border border-border/70 bg-background/65 px-2 py-1 sm:rounded-2xl sm:px-3 sm:py-2">
-                    <p className="truncate text-[0.68rem] text-muted-foreground sm:text-xs">{secondaryMetric.label}</p>
-                    <p className="font-mono text-sm font-black sm:text-lg">{secondaryMetric.value}</p>
-                  </div>
+                );
+              }) : (
+                <div className="rounded-xl border border-dashed border-primary/20 bg-card/70 px-3 py-4 text-center text-xs text-muted-foreground">
+                  {scoring("soloPlayer")}
                 </div>
+              )}
+            </div>
+          </div>
 
-                <div className="hidden gap-1.5 rounded-xl border border-border/70 bg-background/65 p-2 sm:grid sm:gap-2 sm:rounded-2xl sm:p-4">
-                  <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
-                    <span className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground sm:gap-2 sm:text-sm">
-                      <Target className="size-3.5 sm:size-4" aria-hidden="true" />
-                      {scoring("currentDarts")}
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      {scoring("totalDarts", { count: player.dartsThrown })}
-                    </span>
-                  </div>
-                  <p className="font-mono text-xl font-black tracking-tight" data-testid={`darts-player-${index + 1}`}>
-                    {formattedTurn(player, scoring("noDarts"))}
+          <div className="min-w-0 rounded-2xl border border-primary/50 bg-primary/15 p-2 shadow-2xl shadow-primary/15 sm:p-5">
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0 space-y-1">
+                <Badge variant="default" className="text-[0.62rem] uppercase tracking-[0.14em] sm:text-xs">
+                  <Crown className="size-3" aria-hidden="true" />
+                  {scoring("nowPlaying")}
+                </Badge>
+                <CardTitle className="truncate text-xl font-black tracking-tight sm:text-4xl">
+                  {activePlayer.name}
+                </CardTitle>
+                <CardDescription className="text-[0.68rem] sm:text-sm">
+                  {activePlayer.isBot ? scoring("botPlayer") : scoring("humanPlayer")}
+                </CardDescription>
+              </div>
+              <Badge variant="secondary" className="text-[0.62rem] sm:hidden">
+                {scoring("nextDart", { current: Math.min(3, activePlayer.currentTurn.length + 1), total: 3 })}
+              </Badge>
+            </div>
+
+            <div className="mt-2 grid gap-2 sm:mt-5 sm:gap-3">
+              <div>
+                <p className="text-[0.62rem] font-bold uppercase tracking-[0.12em] text-muted-foreground sm:text-sm">{activePrimaryMetric.label}</p>
+                <p
+                  className="font-mono text-6xl font-black leading-none tracking-tight text-foreground min-[380px]:text-7xl sm:text-8xl"
+                  data-testid={`score-player-${activePlayerIndex + 1}`}
+                >
+                  {activePrimaryMetric.value}
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-1.5 sm:gap-3">
+                <div className="rounded-xl border border-border/70 bg-background/70 px-2 py-1.5 sm:rounded-2xl sm:px-3 sm:py-2">
+                  <p className="truncate text-[0.62rem] text-muted-foreground sm:text-xs">{activeSecondaryMetric.label}</p>
+                  <p className="font-mono text-base font-black sm:text-xl">{activeSecondaryMetric.value}</p>
+                </div>
+                <div className="rounded-xl border border-border/70 bg-background/70 px-2 py-1.5 sm:rounded-2xl sm:px-3 sm:py-2">
+                  <p className="flex items-center gap-1 truncate text-[0.62rem] text-muted-foreground sm:text-xs">
+                    <Target className="size-3" aria-hidden="true" />
+                    {scoring("currentDarts")}
+                  </p>
+                  <p className="truncate font-mono text-base font-black sm:text-xl" data-testid={`darts-player-${activePlayerIndex + 1}`}>
+                    {formattedTurn(activePlayer, scoring("noDarts"))}
                   </p>
                 </div>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </section>
   );
 }

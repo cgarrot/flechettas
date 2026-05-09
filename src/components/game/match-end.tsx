@@ -228,12 +228,12 @@ export function MatchEnd({ locale }: MatchEndProps) {
 
         <Separator />
 
-        <DialogFooter className="gap-2 sm:grid sm:grid-cols-4">
+        <DialogFooter className="gap-2 sm:grid sm:grid-cols-2 lg:grid-cols-4">
           <Button
             type="button"
             variant="secondary"
             size="lg"
-            className="min-h-12 rounded-xl"
+            className="min-h-12 min-w-0 whitespace-normal rounded-xl px-3 text-center text-xs leading-tight sm:text-sm"
             data-testid="match-end-continue"
             disabled={isSaving}
             onClick={() => {
@@ -241,13 +241,13 @@ export function MatchEnd({ locale }: MatchEndProps) {
             }}
           >
             <Play aria-hidden="true" />
-            {game("matchContinue")}
+            <span className="min-w-0">{game("matchContinue")}</span>
           </Button>
           <Button
             type="button"
             variant="outline"
             size="lg"
-            className="min-h-12 rounded-xl"
+            className="min-h-12 min-w-0 whitespace-normal rounded-xl px-3 text-center text-xs leading-tight sm:text-sm"
             data-testid="match-end-stats"
             disabled={isSaving}
             onClick={() => {
@@ -255,13 +255,13 @@ export function MatchEnd({ locale }: MatchEndProps) {
             }}
           >
             <BarChart3 aria-hidden="true" />
-            {game("matchStats")}
+            <span className="min-w-0">{game("matchStats")}</span>
           </Button>
           <Button
             type="button"
             variant="outline"
             size="lg"
-            className="min-h-12 rounded-xl"
+            className="min-h-12 min-w-0 whitespace-normal rounded-xl px-3 text-center text-xs leading-tight sm:text-sm"
             data-testid="match-end-home"
             disabled={isSaving}
             onClick={() => {
@@ -269,12 +269,12 @@ export function MatchEnd({ locale }: MatchEndProps) {
             }}
           >
             <Home aria-hidden="true" />
-            {game("matchHome")}
+            <span className="min-w-0">{game("matchHome")}</span>
           </Button>
           <Button
             type="button"
             size="lg"
-            className="min-h-12 rounded-xl"
+            className="min-h-12 min-w-0 whitespace-normal rounded-xl px-3 text-center text-xs leading-tight sm:text-sm"
             data-testid="match-end-rematch"
             disabled={isSaving}
             onClick={() => {
@@ -282,7 +282,7 @@ export function MatchEnd({ locale }: MatchEndProps) {
             }}
           >
             <RotateCcw aria-hidden="true" />
-            {isSaving ? game("matchSaving") : game("matchRematch")}
+            <span className="min-w-0">{isSaving ? game("matchSaving") : game("matchRematch")}</span>
           </Button>
         </DialogFooter>
       </DialogContent>

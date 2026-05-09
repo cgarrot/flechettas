@@ -2,6 +2,7 @@
 
 import { Download, Smartphone, X } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -41,8 +42,16 @@ function isBeforeInstallPromptEvent(event: Event): event is BeforeInstallPromptE
   );
 }
 
+function isScoringRoute(pathname: string): boolean {
+  const segments = pathname.split("/").filter(Boolean);
+  const routeSegment = segments[1];
+
+  return routeSegment === "partie" || routeSegment === "game";
+}
+
 export function InstallPrompt() {
   const pwa = useTranslations("Pwa");
+  const pathname = usePathname();
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isDismissed, setIsDismissed] = useState(false);
   const [isInstalling, setIsInstalling] = useState(false);
@@ -100,7 +109,7 @@ export function InstallPrompt() {
     }
   }
 
-  if (!installPrompt || isDismissed || isStandalone) {
+  if (!installPrompt || isDismissed || isStandalone || isScoringRoute(pathname)) {
     return null;
   }
 

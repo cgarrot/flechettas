@@ -46,6 +46,13 @@ function activeTabFor(pathname: string, locale: Locale): ActiveTab {
   return null;
 }
 
+function isScoringRoute(pathname: string): boolean {
+  const segments = pathname.split("/").filter(Boolean);
+  const routeSegment = segments[1];
+
+  return routeSegment === "partie" || routeSegment === "game";
+}
+
 export function BottomNav({ locale }: BottomNavProps) {
   const pathname = usePathname();
   const navigation = useTranslations("Navigation");
@@ -73,6 +80,10 @@ export function BottomNav({ locale }: BottomNavProps) {
       icon: History,
     },
   ] as const;
+
+  if (isScoringRoute(pathname)) {
+    return null;
+  }
 
   return (
     <nav

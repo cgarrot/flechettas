@@ -1,18 +1,14 @@
 "use client";
 
-import { ArrowLeft, CheckCircle2, ClipboardList, Play } from "lucide-react";
+import { ArrowLeft, Play } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
 } from "@/components/ui/card";
 import { createSharedSessionPlayer } from "@/lib/shared-session-api";
 import { useGameStore } from "@/store";
@@ -23,7 +19,7 @@ import {
   GameConfigForm,
 } from "./game-config";
 import { ModeSelector, modeMessageKeys } from "./mode-selector";
-import { botLevelMessageKeys, PlayerConfig } from "./player-config";
+import { PlayerConfig } from "./player-config";
 
 import type { BotLevel, GameConfig, GameMode, PlayerDef, PlayerId, SharedSessionPlayer } from "@/types";
 
@@ -40,14 +36,6 @@ type SetupFlowProps = Readonly<{
 type ValidationResult =
   | { valid: true; players: PlayerDef[] }
   | { valid: false; message: string };
-
-type ReviewStartProps = Readonly<{
-  config: GameConfig;
-  players: readonly PlayerDef[];
-  isStarting: boolean;
-  validationMessage?: string | null;
-  onStart: () => void;
-}>;
 
 function gameRouteFor(locale: Locale): string {
   return locale === "fr" ? "/fr/partie" : "/en/game";
@@ -67,168 +55,6 @@ function playerDefFromSessionPlayer(player: SharedSessionPlayer): PlayerDef {
 
 function isSharedSessionPlayer(player: SharedSessionPlayer | undefined): player is SharedSessionPlayer {
   return player !== undefined;
-}
-
-function modeSummaryItems(
-  config: GameConfig,
-  label: (key: string) => string,
-  yesNo: (value: boolean | undefined) => string,
-): Array<{ label: string; value: string }> {
-  const legsToWin = config.matchFormat?.legsToWin ?? 1;
-  const setsToWin = config.matchFormat?.setsToWin ?? 1;
-  const base = [
-    { label: label("legsToWin"), value: String(legsToWin) },
-    { label: label("setsToWin"), value: String(setsToWin) },
-  ];
-
-  switch (config.mode) {
-    case "x01":
-      return [
-        ...base,
-        { label: label("startScore"), value: String(config.startingScore) },
-        { label: label("doubleIn"), value: yesNo(config.doubleIn) },
-        { label: label("doubleOut"), value: yesNo(config.doubleOut) },
-      ];
-    case "cricket":
-      return [
-        ...base,
-        { label: label("variant"), value: label(config.variant === "standard" ? "standard" : config.variant === "cut-throat" ? "cutThroat" : "noScore") },
-        { label: label("scorePoints"), value: yesNo(config.scorePoints) },
-      ];
-    case "around-the-clock":
-      return [
-        ...base,
-        { label: label("startSegment"), value: String(config.startSegment) },
-        { label: label("endSegment"), value: String(config.endSegment) },
-        { label: label("requiredMultiplier"), value: config.requiredMultiplier === "open" || !config.requiredMultiplier ? label("open") : String(config.requiredMultiplier) },
-      ];
-    case "bobs-27":
-      return [
-        ...base,
-        { label: label("startScore"), value: String(config.startingScore) },
-        { label: label("allowNegativeScore"), value: yesNo(config.allowNegativeScore) },
-      ];
-    case "checkout-121":
-      return [
-        ...base,
-        { label: label("dartsPerTarget"), value: String(config.dartsPerTarget) },
-        { label: label("successStep"), value: String(config.successStep) },
-        { label: label("failureStep"), value: String(config.failureStep) },
-      ];
-    case "shanghai":
-      return [
-        ...base,
-        { label: label("instantShanghaiWin"), value: yesNo(config.instantShanghaiWin) },
-      ];
-    case "training":
-      return [
-        ...base,
-        { label: label("trainingFocus"), value: label(`focus${config.focus.charAt(0).toUpperCase()}${config.focus.slice(1)}`) },
-        { label: label("rounds"), value: String(config.rounds ?? 1) },
-      ];
-    case "killer":
-      return [
-        ...base,
-        { label: label("startingLives"), value: String(config.startingLives) },
-        { label: label("assignment"), value: label(config.assignment === "first-hit" ? "assignmentFirstHit" : `assignment${config.assignment.charAt(0).toUpperCase()}${config.assignment.slice(1)}`) },
-        { label: label("requiredHitsToBecomeKiller"), value: String(config.requiredHitsToBecomeKiller) },
-      ];
-  }
-}
-
-export function ReviewStart({
-  config,
-  players,
-  isStarting,
-  validationMessage,
-  onStart,
-}: ReviewStartProps) {
-  const setup = useTranslations("Setup");
-  const modes = useTranslations("Modes");
-  const gameConfig = useTranslations("GameConfig");
-  const levels = useTranslations("DartBotLevels");
-  const misc = useTranslations("Misc");
-  const modeLabel = modes(modeMessageKeys[config.mode]);
-  const summaryItems = modeSummaryItems(
-    config,
-    (key) => gameConfig(key),
-    (value) => misc(value ? "yes" : "no"),
-  );
-
-  return (
-    <section className="space-y-3" aria-labelledby="review-start-title">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <Badge variant="outline" className="bg-background/70 uppercase tracking-[0.16em] text-primary">
-          <ClipboardList className="size-3" aria-hidden="true" />
-          {setup("reviewStepKicker")}
-        </Badge>
-        <Badge variant="secondary">{modeLabel}</Badge>
-        <h2 id="review-start-title" className="basis-full text-lg font-black tracking-tight sm:text-xl">
-          {setup("reviewStepTitle")}
-        </h2>
-      </div>
-
-      {validationMessage ? (
-        <p className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm font-medium text-destructive" role="alert">
-          {validationMessage}
-        </p>
-      ) : null}
-
-      <div className="grid gap-3 sm:grid-cols-2">
-        <Card className="border-primary/20 bg-background/65 py-0">
-          <CardHeader className="p-3 pb-2">
-            <CardTitle className="flex items-center gap-2 text-sm">
-              <CheckCircle2 className="size-5 text-primary" aria-hidden="true" />
-              {setup("reviewPlayers")}
-            </CardTitle>
-            <CardDescription className="text-xs">{setup("reviewPlayersDescription", { count: players.length })}</CardDescription>
-          </CardHeader>
-          <CardContent className="max-h-44 space-y-2 overflow-y-auto p-3 pt-0">
-            {players.map((player) => (
-              <div key={player.id} className="flex items-center justify-between gap-3 rounded-xl border border-border/70 bg-card/70 px-3 py-2">
-                <div>
-                  <p className="text-sm font-medium">{player.name}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {player.isBot
-                      ? setup("botWithLevel", { level: levels(botLevelMessageKeys[player.botLevel ?? DEFAULT_BOT_LEVEL]) })
-                      : setup("human")}
-                  </p>
-                </div>
-                <Badge variant={player.isBot ? "secondary" : "outline"}>{player.isBot ? setup("bot") : setup("human")}</Badge>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-
-        <Card className="border-primary/20 bg-background/65 py-0">
-          <CardHeader className="p-3 pb-2">
-            <CardTitle className="text-sm">{setup("reviewConfig")}</CardTitle>
-            <CardDescription className="text-xs">{modeLabel}</CardDescription>
-          </CardHeader>
-          <CardContent className="grid gap-2 p-3 pt-0">
-            {summaryItems.map((item) => (
-              <div key={item.label} className="flex items-center justify-between gap-4 rounded-xl border border-border/70 bg-card/70 px-3 py-2 text-xs">
-                <span className="text-muted-foreground">{item.label}</span>
-                <span className="font-medium">{item.value}</span>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-      </div>
-
-      <Button
-        type="button"
-        size="lg"
-        className="min-h-12 w-full text-base"
-        data-testid="start-game"
-        disabled={isStarting}
-        onClick={onStart}
-      >
-        <Play aria-hidden="true" />
-        {isStarting ? setup("startingGame") : setup("startGame")}
-      </Button>
-    </section>
-  );
 }
 
 export function SetupFlow({ locale }: SetupFlowProps) {
@@ -522,15 +348,24 @@ export function SetupFlow({ locale }: SetupFlowProps) {
 
                 <div className="space-y-4">
                   <GameConfigForm config={selectedConfig} onConfigChange={updateConfig} />
-                  <ReviewStart
-                    config={buildConfigWithPlayers(selectedConfig, players)}
-                    players={players}
-                    isStarting={isStarting}
-                    validationMessage={startValidationMessage}
-                    onStart={() => {
+                  {startValidationMessage ? (
+                    <p className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm font-medium text-destructive" role="alert">
+                      {startValidationMessage}
+                    </p>
+                  ) : null}
+                  <Button
+                    type="button"
+                    size="lg"
+                    className="min-h-12 w-full text-base"
+                    data-testid="start-game"
+                    disabled={isStarting}
+                    onClick={() => {
                       void startGame();
                     }}
-                  />
+                  >
+                    <Play aria-hidden="true" />
+                    {isStarting ? setup("startingGame") : setup("startGame")}
+                  </Button>
                 </div>
               </CardContent>
             </Card>

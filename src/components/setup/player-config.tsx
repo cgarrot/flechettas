@@ -2,16 +2,22 @@
 
 import { Bot, CheckCircle2, Plus, UserRound, X } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
 } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -77,6 +83,7 @@ export function PlayerConfig({
 }: PlayerConfigProps) {
   const setup = useTranslations("Setup");
   const levels = useTranslations("DartBotLevels");
+  const [isAddOpen, setIsAddOpen] = useState(false);
   const humanCount = players.filter((player) => !player.isBot).length;
   const botCount = players.length - humanCount;
   const canAddPlayer = players.length < maxTotalPlayers;
@@ -85,7 +92,7 @@ export function PlayerConfig({
 
   return (
     <section className="space-y-3" aria-labelledby="player-config-title">
-      <div className="flex flex-wrap items-start justify-between gap-2">
+      <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 space-y-1">
           <Badge variant="outline" className="bg-background/70 uppercase tracking-[0.16em] text-primary">
             <UserRound className="size-3" aria-hidden="true" />
@@ -98,85 +105,94 @@ export function PlayerConfig({
             {setup("playerStepDescription", { count: maxTotalPlayers })}
           </p>
         </div>
-        <div className="flex flex-wrap justify-end gap-2">
-          <Badge variant="secondary">{setup("playerCount", { count: humanCount })}</Badge>
-          <Badge variant="outline">{setup("botCount", { count: botCount })}</Badge>
-        </div>
-      </div>
+        <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
+          <DialogTrigger asChild>
+            <Button type="button" size="sm" className="min-h-10 shrink-0 rounded-xl" data-testid="add-participant">
+              <Plus className="size-4" aria-hidden="true" />
+              <span className="sr-only sm:not-sr-only">{setup("addParticipant")}</span>
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-2xl">
+            <DialogHeader className="text-left">
+              <DialogTitle>{setup("playerDialogTitle")}</DialogTitle>
+              <DialogDescription>{setup("playerDialogDescription", { count: maxTotalPlayers })}</DialogDescription>
+            </DialogHeader>
 
-      {sessionBackedHumans ? (
-        <Card className="border-primary/20 bg-background/65 py-0">
-          <CardHeader className="p-3 pb-2">
-            <CardTitle className="flex items-center gap-2 text-sm">
-              <UserRound className="size-4 text-primary" aria-hidden="true" />
-              {setup("sessionPlayersTitle")}
-            </CardTitle>
-            <CardDescription className="text-xs">{setup("sessionPlayersDescription")}</CardDescription>
-          </CardHeader>
-          <CardContent className="grid max-h-40 gap-2 overflow-y-auto p-3 pt-0 sm:grid-cols-2">
-            {availableSessionPlayers.length > 0 ? availableSessionPlayers.map((player) => {
-              const isSelected = selectedSessionPlayerIds.includes(player.id);
-              const canToggleOn = isSelected || canAddHuman;
+            <div className="grid gap-4">
+              {sessionBackedHumans ? (
+                <div className="grid gap-2 rounded-2xl border border-primary/20 bg-background/65 p-3">
+                  <p className="text-xs font-bold uppercase tracking-[0.16em] text-primary">{setup("sessionPlayersTitle")}</p>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {availableSessionPlayers.length > 0 ? availableSessionPlayers.map((player) => {
+                      const isSelected = selectedSessionPlayerIds.includes(player.id);
+                      const canToggleOn = isSelected || canAddHuman;
 
-              return (
+                      return (
+                        <Button
+                          key={player.id}
+                          type="button"
+                          variant={isSelected ? "default" : "outline"}
+                          className="min-h-11 justify-start rounded-xl"
+                          disabled={!canToggleOn}
+                          aria-pressed={isSelected}
+                          onClick={() => onToggleSessionPlayer?.(player.id)}
+                        >
+                          {isSelected ? <CheckCircle2 className="size-4" aria-hidden="true" /> : <UserRound className="size-4" aria-hidden="true" />}
+                          <span className="min-w-0 flex-1 truncate text-left">{player.name}</span>
+                          <span className="text-xs opacity-75">{isSelected ? setup("selectedForMatch") : setup("tapToInclude")}</span>
+                        </Button>
+                      );
+                    }) : (
+                      <p className="rounded-xl border border-dashed border-primary/20 bg-card/70 px-4 py-5 text-center text-sm text-muted-foreground sm:col-span-2">
+                        {setup("noSessionPlayers")}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              ) : null}
+
+              <div className="grid gap-2 rounded-2xl border border-border/70 bg-background/65 p-3 sm:grid-cols-[1fr_auto_auto]">
+                {sessionBackedHumans ? (
+                  <Input
+                    value={newHumanName}
+                    className="min-h-10 bg-background/65"
+                    placeholder={setup("newSessionPlayerPlaceholder")}
+                    aria-label={setup("newSessionPlayerName")}
+                    onChange={(event) => onNewHumanNameChange?.(event.target.value)}
+                  />
+                ) : null}
                 <Button
-                  key={player.id}
                   type="button"
-                  variant={isSelected ? "default" : "outline"}
-                  className="min-h-10 justify-start rounded-xl"
-                  disabled={!canToggleOn}
-                  aria-pressed={isSelected}
-                  onClick={() => onToggleSessionPlayer?.(player.id)}
+                  size="sm"
+                  className="min-h-10"
+                  data-testid="add-player"
+                  disabled={!canCreateHuman}
+                  onClick={() => {
+                    void onAddHuman();
+                  }}
                 >
-                  {isSelected ? <CheckCircle2 className="size-4" aria-hidden="true" /> : <UserRound className="size-4" aria-hidden="true" />}
-                  <span className="min-w-0 flex-1 truncate text-left">{player.name}</span>
-                  <span className="text-xs opacity-75">{isSelected ? setup("selectedForMatch") : setup("tapToInclude")}</span>
+                  <Plus aria-hidden="true" />
+                  {setup("addPlayer")}
                 </Button>
-              );
-            }) : (
-              <p className="rounded-xl border border-dashed border-primary/20 bg-card/70 px-4 py-5 text-center text-sm text-muted-foreground sm:col-span-2">
-                {setup("noSessionPlayers")}
-              </p>
-            )}
-          </CardContent>
-        </Card>
-      ) : null}
-
-      <div className="grid gap-2 sm:grid-cols-[1fr_auto_auto]">
-        {sessionBackedHumans ? (
-          <Input
-            value={newHumanName}
-            className="min-h-10 bg-background/65"
-            placeholder={setup("newSessionPlayerPlaceholder")}
-            aria-label={setup("newSessionPlayerName")}
-            onChange={(event) => onNewHumanNameChange?.(event.target.value)}
-          />
-        ) : null}
-        <Button
-          type="button"
-          size="sm"
-          className="min-h-10"
-          data-testid="add-player"
-          disabled={!canCreateHuman}
-          onClick={() => {
-            void onAddHuman();
-          }}
-        >
-          <Plus aria-hidden="true" />
-          {setup("addPlayer")}
-        </Button>
-        <Button
-          type="button"
-          size="sm"
-          variant="secondary"
-          className="min-h-10"
-          data-testid="add-bot"
-          disabled={!canAddPlayer}
-          onClick={onAddBot}
-        >
-          <Bot aria-hidden="true" />
-          {setup("addBot")}
-        </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  className="min-h-10"
+                  data-testid="add-bot"
+                  disabled={!canAddPlayer}
+                  onClick={() => {
+                    onAddBot();
+                    setIsAddOpen(false);
+                  }}
+                >
+                  <Bot aria-hidden="true" />
+                  {setup("addBot")}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
 
       {validationMessage ? (
@@ -185,24 +201,31 @@ export function PlayerConfig({
         </p>
       ) : null}
 
-      <div className="space-y-2">
-        {players.length === 0 ? (
-            <Card className="border-dashed border-primary/20 bg-card/70">
-            <CardContent className="py-5 text-center text-sm text-muted-foreground">
+      <Card className="border-primary/15 bg-background/65 py-0">
+        <CardContent className="space-y-2 p-3">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-xs font-bold uppercase tracking-[0.16em] text-primary">{setup("selectedParticipants")}</p>
+            <div className="flex gap-1.5">
+              <Badge variant="secondary">{setup("playerCount", { count: humanCount })}</Badge>
+              <Badge variant="outline">{setup("botCount", { count: botCount })}</Badge>
+            </div>
+          </div>
+
+          {players.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-primary/20 bg-card/70 px-4 py-5 text-center text-sm text-muted-foreground">
               {setup("emptyPlayers")}
-            </CardContent>
-          </Card>
-        ) : null}
+            </div>
+          ) : null}
 
-        {players.map((player, index) => {
-          const playerNumber = index + 1;
-          const playerInputId = `player-name-${player.id}`;
-          const botLevelId = `bot-level-${player.id}`;
+          <div className="grid max-h-72 gap-2 overflow-y-auto pr-1">
+            {players.map((player, index) => {
+              const playerNumber = index + 1;
+              const playerInputId = `player-name-${player.id}`;
+              const botLevelId = `bot-level-${player.id}`;
 
-          return (
-            <Card key={player.id} className="border-primary/15 bg-card/90 py-0 shadow-lg shadow-primary/5">
-              <CardContent className="grid gap-3 p-3 sm:grid-cols-[1fr_auto] sm:items-end">
-                <div className="grid gap-2 sm:grid-cols-[1fr_12rem] sm:items-end">
+              return (
+                <div key={player.id} className="grid gap-2 rounded-xl border border-border/70 bg-card/80 p-2 sm:grid-cols-[1fr_auto] sm:items-end">
+                <div className="grid gap-2 sm:grid-cols-[1fr_11rem] sm:items-end">
                   <div className="space-y-2">
                     <div className="flex items-center gap-2">
                       <Badge variant={player.isBot ? "secondary" : "outline"}>
@@ -261,11 +284,12 @@ export function PlayerConfig({
                     <span className="sm:sr-only">{setup("removePlayer")}</span>
                   </Button>
                 )}
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
+                </div>
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
     </section>
   );
 }

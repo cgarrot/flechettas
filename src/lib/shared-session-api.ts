@@ -83,6 +83,12 @@ export async function ensureSharedSession(code: string): Promise<SharedSessionSu
   return response.session;
 }
 
+export async function fetchSharedSession(code: string): Promise<SharedSessionSummary> {
+  const response = await requestJson<SessionResponse>(`/api/sessions/${encodeURIComponent(code)}`);
+
+  return response.session;
+}
+
 export async function createSharedSessionPlayer(code: string, name: string): Promise<PlayerResponse> {
   return requestJson<PlayerResponse>(`/api/sessions/${encodeURIComponent(code)}/players`, {
     method: "POST",

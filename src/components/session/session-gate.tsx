@@ -1,6 +1,6 @@
 "use client";
 
-import { Link2, Plus, UserRound, X } from "lucide-react";
+import { Link2, Plus, UserRound } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useState } from "react";
 
@@ -14,12 +14,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { createSharedSession, createSharedSessionPlayer, ensureSharedSession } from "@/lib/shared-session-api";
+import { createSharedSession, createSharedSessionPlayer, ensureSharedSession, fetchSharedSession } from "@/lib/shared-session-api";
 import {
   clearStoredSessionCode,
   clearStoredSessionPlayerId,
-  dismissSessionPrompt,
-  hasDismissedSessionPrompt,
   normalizeStoredSessionCode,
   readOrCreateDeviceId,
   readStoredSessionCode,
@@ -52,14 +50,12 @@ export function SessionGate() {
   const sessionCopy = useTranslations("Session");
   const setSharedSessionContext = useGameStore((state) => state.setSharedSessionContext);
   const hydrateSharedActiveGame = useGameStore((state) => state.hydrateSharedActiveGame);
-  const storeSessionCode = useGameStore((state) => state.sharedSessionCode);
   const storePlayerId = useGameStore((state) => state.sharedSessionPlayerId);
   const [session, setSession] = useState<SharedSessionSummary | null>(null);
   const [selectedPlayerId, setSelectedPlayerId] = useState<PlayerId | null>(null);
   const [deviceId, setDeviceId] = useState<string | null>(null);
   const [sessionCodeInput, setSessionCodeInput] = useState("");
   const [playerNameInput, setPlayerNameInput] = useState("");
-  const [isDismissed, setIsDismissed] = useState(true);
   const [isBusy, setIsBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const selectedPlayer = useMemo(
@@ -74,8 +70,6 @@ export function SessionGate() {
     const nextDeviceId = readOrCreateDeviceId();
 
     setDeviceId(nextDeviceId);
-    setIsDismissed(hasDismissedSessionPrompt());
-
     if (!storedCode) {
       setSharedSessionContext({ code: null, playerId: null, deviceId: nextDeviceId, players: [] });
       return;
@@ -124,6 +118,49 @@ export function SessionGate() {
       isCancelled = true;
     };
   }, [sessionCopy, setSharedSessionContext]);
+
+  useEffect(() => {
+    const sessionCode = session?.code ?? null;
+
+    if (!sessionCode || !deviceId) {
+      return;
+    }
+
+    let isCancelled = false;
+    const codeToRefresh = sessionCode;
+
+    async function refreshSessionPlayers() {
+      try {
+        const refreshedSession = await fetchSharedSession(codeToRefresh);
+        const playerStillExists = refreshedSession.players.some((player) => player.id === selectedPlayerId);
+        const nextPlayerId = playerStillExists ? selectedPlayerId : null;
+
+        if (!isCancelled) {
+          setSession(refreshedSession);
+          setSelectedPlayerId(nextPlayerId);
+          setSharedSessionContext({
+            code: refreshedSession.code,
+            playerId: nextPlayerId,
+            deviceId,
+            players: refreshedSession.players,
+          });
+        }
+      } catch {
+        if (!isCancelled) {
+          setError(sessionCopy("loadFailed"));
+        }
+      }
+    }
+
+    const intervalId = window.setInterval(() => {
+      void refreshSessionPlayers();
+    }, 4000);
+
+    return () => {
+      isCancelled = true;
+      window.clearInterval(intervalId);
+    };
+  }, [deviceId, selectedPlayerId, session?.code, sessionCopy, setSharedSessionContext]);
 
   async function activateSession(code: string) {
     const normalizedCode = normalizeStoredSessionCode(code);
@@ -231,20 +268,29 @@ export function SessionGate() {
     void hydrateSharedActiveGame(null);
   }
 
-  function dismissPrompt() {
-    dismissSessionPrompt();
-    setIsDismissed(true);
-  }
-
-  if (!session && isDismissed && !storeSessionCode) {
-    return null;
+  if (session && selectedPlayer) {
+    return (
+      <div className="pointer-events-none fixed right-4 top-3 z-40 hidden max-w-xs md:block">
+        <Card className="pointer-events-auto gap-0 border-secondary/30 bg-card/90 py-0 shadow-xl shadow-primary/10 backdrop-blur">
+          <CardContent className="flex items-center gap-3 p-2 text-xs">
+            <div className="min-w-0 flex-1">
+              <p className="truncate font-semibold">{sessionCopy("active", { code: session.code })}</p>
+              <p className="truncate text-muted-foreground">{sessionCopy("selectedPlayer", { player: selectedPlayer.name })}</p>
+            </div>
+            <Button type="button" size="sm" variant="outline" onClick={leaveSession}>
+              {sessionCopy("change")}
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
   return (
-    <div className="fixed inset-x-3 top-3 z-40 mx-auto max-w-3xl md:left-28 md:right-4 md:mx-0">
-      <Card className={cn("gap-0 border-primary/20 bg-card/95 py-0 shadow-2xl shadow-primary/15", session && "border-secondary/30")}>
-        <CardContent className="grid gap-3 p-3 text-sm sm:grid-cols-[1fr_auto] sm:items-center">
-          <div className="min-w-0 space-y-1">
+    <div className="fixed inset-0 z-50 grid place-items-center bg-background/95 p-4 backdrop-blur-xl">
+      <Card className={cn("w-full max-w-3xl gap-0 border-primary/25 bg-card/95 py-0 shadow-2xl shadow-primary/15", session && "border-secondary/30")}>
+        <CardContent className="grid gap-5 p-5 text-sm sm:p-6">
+          <div className="min-w-0 space-y-2 text-center sm:text-left">
             <p className="flex items-center gap-2 font-semibold">
               <Link2 className="size-4 text-primary" aria-hidden="true" />
               {session ? sessionCopy("active", { code: session.code }) : sessionCopy("promptTitle")}
@@ -260,7 +306,7 @@ export function SessionGate() {
           </div>
 
           {!session ? (
-            <div className="grid gap-2 sm:min-w-80 sm:grid-cols-[1fr_auto_auto]">
+            <div className="grid gap-2 sm:grid-cols-[1fr_auto_auto]">
               <Input
                 value={sessionCodeInput}
                 className="min-h-10 uppercase"
@@ -275,12 +321,9 @@ export function SessionGate() {
                 <Plus aria-hidden="true" />
                 {sessionCopy("create")}
               </Button>
-              <Button type="button" size="icon-sm" variant="ghost" aria-label={sessionCopy("dismiss")} onClick={dismissPrompt}>
-                <X aria-hidden="true" />
-              </Button>
             </div>
           ) : (
-            <div className="grid gap-2 sm:min-w-96 sm:grid-cols-[1fr_auto_auto]">
+            <div className="grid gap-2 sm:grid-cols-[1fr_auto_auto]">
               {session.players.length > 0 ? (
                 <Select value={storePlayerId ?? selectedPlayerId ?? ""} onValueChange={(value) => selectPlayer(value)}>
                   <SelectTrigger className="min-h-10 w-full">

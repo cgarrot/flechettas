@@ -1,7 +1,6 @@
 import type { PlayerId } from "@/types";
 
 export const SESSION_CODE_KEY = "flechettas.sessionCode";
-export const SESSION_DISMISSED_KEY = "flechettas.session.dismissed";
 export const SESSION_DEVICE_ID_KEY = "flechettas.session.deviceId";
 
 function hasStorage(): boolean {
@@ -31,7 +30,6 @@ export function writeStoredSessionCode(code: string): string {
 
   if (hasStorage()) {
     window.localStorage.setItem(SESSION_CODE_KEY, normalizedCode);
-    window.localStorage.removeItem(SESSION_DISMISSED_KEY);
   }
 
   return normalizedCode;
@@ -43,20 +41,6 @@ export function clearStoredSessionCode(): void {
   }
 
   window.localStorage.removeItem(SESSION_CODE_KEY);
-}
-
-export function hasDismissedSessionPrompt(): boolean {
-  if (!hasStorage()) {
-    return false;
-  }
-
-  return window.localStorage.getItem(SESSION_DISMISSED_KEY) === "true";
-}
-
-export function dismissSessionPrompt(): void {
-  if (hasStorage()) {
-    window.localStorage.setItem(SESSION_DISMISSED_KEY, "true");
-  }
 }
 
 export function readStoredSessionPlayerId(code: string): PlayerId | null {

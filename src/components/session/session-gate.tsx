@@ -1,6 +1,6 @@
 "use client";
 
-import { BarChart3, Link2, Plus, UserRound, Users } from "lucide-react";
+import { BarChart3, Link2, Plus, Trash2, UserRound, Users } from "lucide-react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { usePathname } from "next/navigation";
@@ -31,7 +31,7 @@ import {
   MIN_SHARED_SESSION_CODE_LENGTH,
   normalizeSharedSessionCode,
 } from "@/lib/shared-session-code";
-import { createSharedSession, createSharedSessionPlayer, ensureSharedSession, fetchSharedSession } from "@/lib/shared-session-api";
+import { createSharedSession, createSharedSessionPlayer, deleteSharedSessionPlayer, ensureSharedSession, fetchSharedSession } from "@/lib/shared-session-api";
 import {
   clearStoredSessionCode,
   clearStoredSessionPlayerId,
@@ -45,7 +45,10 @@ import {
 import { cn } from "@/lib/utils";
 import { useGameStore } from "@/store";
 
-import type { PlayerId, SharedSessionSummary } from "@/types";
+import type { PlayerId, SharedSessionPlayer, SharedSessionSummary } from "@/types";
+
+const SESSION_PLAYERS_POLL_MS = 15_000;
+type ShareStatus = "idle" | "copied" | "failed";
 
 function importedSessionCodeFromUrl(): string | null {
   const url = new URL(window.location.href);
@@ -69,6 +72,14 @@ function historyRouteFor(pathname: string): string {
   return locale === "en" ? "/en/history" : "/fr/historique";
 }
 
+function sessionShareUrl(code: string): string {
+  const url = new URL(window.location.href);
+
+  url.searchParams.set("session", code);
+
+  return url.toString();
+}
+
 export function SessionGate() {
   const pathname = usePathname();
   const sessionCopy = useTranslations("Session");
@@ -83,6 +94,7 @@ export function SessionGate() {
   const [isPlayersOpen, setIsPlayersOpen] = useState(false);
   const [isBusy, setIsBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [shareStatus, setShareStatus] = useState<ShareStatus>("idle");
   const selectedPlayer = useMemo(
     () => session?.players.find((player) => player.id === selectedPlayerId) ?? null,
     [selectedPlayerId, session],
@@ -188,12 +200,23 @@ export function SessionGate() {
     }
 
     const intervalId = window.setInterval(() => {
-      void refreshSessionPlayers();
-    }, 4000);
+      if (!isCancelled && document.visibilityState === "visible") {
+        void refreshSessionPlayers();
+      }
+    }, SESSION_PLAYERS_POLL_MS);
+
+    function handleVisibilityChange() {
+      if (!isCancelled && document.visibilityState === "visible") {
+        void refreshSessionPlayers();
+      }
+    }
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
 
     return () => {
       isCancelled = true;
       window.clearInterval(intervalId);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, [deviceId, selectedPlayerId, session?.code, sessionCopy, setSharedSessionContext]);
 
@@ -310,6 +333,80 @@ export function SessionGate() {
     }
   }
 
+  async function deletePlayer(player: SharedSessionPlayer) {
+    if (!session || !deviceId) {
+      return;
+    }
+
+    const confirmed = window.confirm(sessionCopy("deletePlayerConfirm", { player: player.name }));
+
+    if (!confirmed) {
+      return;
+    }
+
+    setIsBusy(true);
+    setError(null);
+
+    try {
+      const refreshedSession = await deleteSharedSessionPlayer(session.code, player.id);
+      const selectedPlayerStillExists = refreshedSession.players.some((candidate) => candidate.id === selectedPlayerId);
+      const nextPlayerId = selectedPlayerStillExists ? selectedPlayerId : null;
+
+      if (!selectedPlayerStillExists) {
+        clearStoredSessionPlayerId(refreshedSession.code);
+      }
+
+      setSession(refreshedSession);
+      setSelectedPlayerId(nextPlayerId);
+      setSharedSessionContext({
+        code: refreshedSession.code,
+        playerId: nextPlayerId,
+        deviceId,
+        players: refreshedSession.players,
+      });
+    } catch {
+      setError(sessionCopy("playerDeleteFailed"));
+    } finally {
+      setIsBusy(false);
+    }
+  }
+
+  async function shareSession() {
+    if (!session) {
+      return;
+    }
+
+    const url = sessionShareUrl(session.code);
+
+    setShareStatus("idle");
+
+    try {
+      if (typeof navigator.share === "function") {
+        await navigator.share({
+          title: sessionCopy("shareTitle", { code: session.code }),
+          text: sessionCopy("shareText", { code: session.code }),
+          url,
+        });
+        setShareStatus("copied");
+        return;
+      }
+
+      if (navigator.clipboard) {
+        await navigator.clipboard.writeText(url);
+        setShareStatus("copied");
+        return;
+      }
+
+      setShareStatus("failed");
+    } catch (shareError) {
+      if (shareError instanceof DOMException && shareError.name === "AbortError") {
+        return;
+      }
+
+      setShareStatus("failed");
+    }
+  }
+
   async function leaveSession() {
     setIsBusy(true);
     setError(null);
@@ -336,7 +433,16 @@ export function SessionGate() {
   if (session && selectedPlayer) {
     return (
       <div className="fixed right-3 top-[calc(0.75rem+env(safe-area-inset-top))] z-40 max-w-[calc(100vw-1.5rem)] md:right-4 md:top-3">
-        <Dialog open={isPlayersOpen} onOpenChange={setIsPlayersOpen}>
+        <Dialog
+          open={isPlayersOpen}
+          onOpenChange={(open) => {
+            setIsPlayersOpen(open);
+
+            if (!open) {
+              setShareStatus("idle");
+            }
+          }}
+        >
           <DialogTrigger asChild>
             <Button type="button" size="sm" variant="secondary" className="min-h-10 rounded-2xl border border-secondary/30 bg-card/95 shadow-xl shadow-primary/10 backdrop-blur" data-testid="session-players-button">
               <Users className="size-4" aria-hidden="true" />
@@ -356,6 +462,28 @@ export function SessionGate() {
             </DialogHeader>
 
             <div className="grid gap-4">
+              <div className="grid gap-3 rounded-2xl border border-secondary/25 bg-card/80 p-3 sm:grid-cols-[1fr_auto] sm:items-center">
+                <div className="min-w-0 space-y-1">
+                  <p className="text-sm font-bold">{sessionCopy("shareTitle", { code: session.code })}</p>
+                  <p className="text-xs leading-5 text-muted-foreground">{sessionCopy("shareDescription")}</p>
+                  {shareStatus !== "idle" ? (
+                    <p
+                      className={cn(
+                        "text-xs font-medium",
+                        shareStatus === "copied" ? "text-primary" : "text-destructive",
+                      )}
+                      role="status"
+                    >
+                      {shareStatus === "copied" ? sessionCopy("shareCopied") : sessionCopy("shareFailed")}
+                    </p>
+                  ) : null}
+                </div>
+                <Button type="button" size="sm" variant="secondary" className="justify-center rounded-xl" onClick={() => { void shareSession(); }}>
+                  <Link2 className="size-4" aria-hidden="true" />
+                  {sessionCopy("shareSession")}
+                </Button>
+              </div>
+
               <div className="grid gap-2 rounded-2xl border border-primary/20 bg-background/65 p-3">
                 <p className="text-xs font-bold uppercase tracking-[0.16em] text-primary">{sessionCopy("sessionPlayers")}</p>
                 <div className="grid gap-2 sm:grid-cols-2">
@@ -363,18 +491,32 @@ export function SessionGate() {
                     const isSelected = player.id === selectedPlayerId;
 
                     return (
-                      <Button
-                        key={player.id}
-                        type="button"
-                        variant={isSelected ? "default" : "outline"}
-                        className="min-h-12 justify-start rounded-xl"
-                        data-testid={`session-player-${player.id}`}
-                        onClick={() => selectPlayer(player.id)}
-                      >
-                        <UserRound className="size-4" aria-hidden="true" />
-                        <span className="min-w-0 flex-1 truncate text-left">{player.name}</span>
-                        {isSelected ? <span className="text-xs opacity-80">{sessionCopy("youBadge")}</span> : null}
-                      </Button>
+                      <div key={player.id} className="grid grid-cols-[1fr_auto] gap-2">
+                        <Button
+                          type="button"
+                          variant={isSelected ? "default" : "outline"}
+                          className="min-h-12 justify-start rounded-xl"
+                          data-testid={`session-player-${player.id}`}
+                          onClick={() => selectPlayer(player.id)}
+                        >
+                          <UserRound className="size-4" aria-hidden="true" />
+                          <span className="min-w-0 flex-1 truncate text-left">{player.name}</span>
+                          {isSelected ? <span className="text-xs opacity-80">{sessionCopy("youBadge")}</span> : null}
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="min-h-12 min-w-12 rounded-xl text-muted-foreground hover:text-destructive"
+                          aria-label={sessionCopy("deletePlayerA11y", { player: player.name })}
+                          disabled={isBusy}
+                          onClick={() => {
+                            void deletePlayer(player);
+                          }}
+                        >
+                          <Trash2 className="size-4" aria-hidden="true" />
+                        </Button>
+                      </div>
                     );
                   })}
                 </div>

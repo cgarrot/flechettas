@@ -7,7 +7,6 @@ import { usePathname } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
-import { LanguageSwitcher } from "@/components/ui/language-switcher";
 import { cn } from "@/lib/utils";
 
 import type { Locale } from "@/i18n/routing";
@@ -87,7 +86,6 @@ export function AppHeader({ locale }: AppHeaderProps) {
 
         <div className={cn("flex shrink-0 items-center gap-2", isScoring && "hidden sm:flex")}>
           <ThemeToggle />
-          <LanguageSwitcher locale={locale} />
         </div>
       </div>
     </header>

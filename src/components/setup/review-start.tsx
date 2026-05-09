@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, ArrowRight, CheckCircle2, ClipboardList, Play } from "lucide-react";
+import { ArrowLeft, CheckCircle2, ClipboardList, Play } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -14,10 +14,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
 import { createSharedSessionPlayer } from "@/lib/shared-session-api";
 import { useGameStore } from "@/store";
-import { cn } from "@/lib/utils";
 
 import {
   buildConfigWithPlayers,
@@ -32,9 +30,7 @@ import type { BotLevel, GameConfig, GameMode, PlayerDef, PlayerId, SharedSession
 const MAX_HUMAN_PLAYERS = 20;
 const MAX_TOTAL_PLAYERS = 20;
 const DEFAULT_BOT_LEVEL = 1 satisfies BotLevel;
-const STEP_IDS = ["mode", "players", "config", "review"] as const;
-
-type StepId = (typeof STEP_IDS)[number];
+type StepId = "mode" | "setup";
 type Locale = "fr" | "en";
 
 type SetupFlowProps = Readonly<{
@@ -55,10 +51,6 @@ type ReviewStartProps = Readonly<{
 
 function gameRouteFor(locale: Locale): string {
   return locale === "fr" ? "/fr/partie" : "/en/game";
-}
-
-function stepIndexFor(step: StepId): number {
-  return STEP_IDS.indexOf(step);
 }
 
 function normalizeName(name: string): string {
@@ -164,20 +156,16 @@ export function ReviewStart({
   );
 
   return (
-    <section className="space-y-5" aria-labelledby="review-start-title">
-      <div className="space-y-2">
-        <Badge variant="outline" className="bg-background/70 uppercase tracking-[0.18em] text-primary">
+    <section className="space-y-3" aria-labelledby="review-start-title">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <Badge variant="outline" className="bg-background/70 uppercase tracking-[0.16em] text-primary">
           <ClipboardList className="size-3" aria-hidden="true" />
           {setup("reviewStepKicker")}
         </Badge>
-        <div className="space-y-2">
-          <h2 id="review-start-title" className="text-2xl font-black tracking-tight sm:text-3xl">
-            {setup("reviewStepTitle")}
-          </h2>
-          <p className="max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">
-            {setup("reviewStepDescription")}
-          </p>
-        </div>
+        <Badge variant="secondary">{modeLabel}</Badge>
+        <h2 id="review-start-title" className="basis-full text-lg font-black tracking-tight sm:text-xl">
+          {setup("reviewStepTitle")}
+        </h2>
       </div>
 
       {validationMessage ? (
@@ -186,20 +174,20 @@ export function ReviewStart({
         </p>
       ) : null}
 
-      <div className="grid gap-4 lg:grid-cols-[1fr_1fr]">
-        <Card className="border-primary/20 bg-card/95">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+      <div className="grid gap-3 sm:grid-cols-2">
+        <Card className="border-primary/20 bg-background/65 py-0">
+          <CardHeader className="p-3 pb-2">
+            <CardTitle className="flex items-center gap-2 text-sm">
               <CheckCircle2 className="size-5 text-primary" aria-hidden="true" />
               {setup("reviewPlayers")}
             </CardTitle>
-            <CardDescription>{setup("reviewPlayersDescription", { count: players.length })}</CardDescription>
+            <CardDescription className="text-xs">{setup("reviewPlayersDescription", { count: players.length })}</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-3">
+          <CardContent className="max-h-44 space-y-2 overflow-y-auto p-3 pt-0">
             {players.map((player) => (
-              <div key={player.id} className="flex items-center justify-between gap-3 rounded-xl border border-border/70 bg-background/65 px-4 py-3">
+              <div key={player.id} className="flex items-center justify-between gap-3 rounded-xl border border-border/70 bg-card/70 px-3 py-2">
                 <div>
-                  <p className="font-medium">{player.name}</p>
+                  <p className="text-sm font-medium">{player.name}</p>
                   <p className="text-xs text-muted-foreground">
                     {player.isBot
                       ? setup("botWithLevel", { level: levels(botLevelMessageKeys[player.botLevel ?? DEFAULT_BOT_LEVEL]) })
@@ -212,14 +200,14 @@ export function ReviewStart({
           </CardContent>
         </Card>
 
-        <Card className="border-primary/20 bg-card/95">
-          <CardHeader>
-            <CardTitle>{setup("reviewConfig")}</CardTitle>
-            <CardDescription>{modeLabel}</CardDescription>
+        <Card className="border-primary/20 bg-background/65 py-0">
+          <CardHeader className="p-3 pb-2">
+            <CardTitle className="text-sm">{setup("reviewConfig")}</CardTitle>
+            <CardDescription className="text-xs">{modeLabel}</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-3">
+          <CardContent className="grid gap-2 p-3 pt-0">
             {summaryItems.map((item) => (
-              <div key={item.label} className="flex items-center justify-between gap-4 rounded-xl border border-border/70 bg-background/65 px-4 py-3 text-sm">
+              <div key={item.label} className="flex items-center justify-between gap-4 rounded-xl border border-border/70 bg-card/70 px-3 py-2 text-xs">
                 <span className="text-muted-foreground">{item.label}</span>
                 <span className="font-medium">{item.value}</span>
               </div>
@@ -231,7 +219,7 @@ export function ReviewStart({
       <Button
         type="button"
         size="lg"
-        className="min-h-14 w-full text-base"
+        className="min-h-12 w-full text-base"
         data-testid="start-game"
         disabled={isStarting}
         onClick={onStart}
@@ -265,7 +253,6 @@ export function SetupFlow({ locale }: SetupFlowProps) {
   const [startValidationMessage, setStartValidationMessage] = useState<string | null>(null);
   const [isStarting, setIsStarting] = useState(false);
   const selectedConfig = configs[selectedMode];
-  const currentStepIndex = stepIndexFor(step);
   const modeLabel = modes(modeMessageKeys[selectedMode]);
   const gameRoute = useMemo(() => gameRouteFor(locale), [locale]);
   const selectedSessionPlayers = useMemo(
@@ -336,24 +323,13 @@ export function SetupFlow({ locale }: SetupFlowProps) {
     return { valid: true, players: normalizedPlayers };
   }
 
-  function moveToNextStep() {
-    if (step === "players") {
-      const validation = validatePlayers();
-
-      if (!validation.valid) {
-        setPlayerValidationMessage(validation.message);
-        return;
-      }
-
-      setBotPlayers(validation.players.filter((player) => player.isBot));
-      setPlayerValidationMessage(null);
-    }
-
-    setStep(STEP_IDS[Math.min(currentStepIndex + 1, STEP_IDS.length - 1)]);
+  function selectModeAndConfigure(mode: GameMode) {
+    setSelectedMode(mode);
+    setStep("setup");
   }
 
-  function moveToPreviousStep() {
-    setStep(STEP_IDS[Math.max(currentStepIndex - 1, 0)]);
+  function returnToModeSelection() {
+    setStep("mode");
   }
 
   function updateConfig(config: GameConfig) {
@@ -459,7 +435,8 @@ export function SetupFlow({ locale }: SetupFlowProps) {
 
     if (!validation.valid) {
       setStartValidationMessage(validation.message);
-      setStep("players");
+      setPlayerValidationMessage(validation.message);
+      setStep("setup");
       return;
     }
 
@@ -473,61 +450,46 @@ export function SetupFlow({ locale }: SetupFlowProps) {
       router.push(gameRoute);
     } catch {
       setStartValidationMessage(setup("errors.startFailed"));
-      setStep("review");
+      setStep("setup");
     } finally {
       setIsStarting(false);
     }
   }
 
   return (
-    <main className="min-h-screen overflow-hidden bg-transparent px-4 py-6 text-foreground sm:px-6 lg:px-8">
-      <section className="relative mx-auto flex max-w-6xl flex-col gap-6">
+    <main className="min-h-[calc(100dvh-4rem)] overflow-x-hidden bg-transparent px-2 py-2 text-foreground sm:px-6 sm:py-5 lg:px-8">
+      <section className="relative mx-auto flex max-w-6xl flex-col gap-3 sm:gap-4">
         <div className="pointer-events-none absolute -top-24 right-4 -z-10 size-72 rounded-full bg-chart-2/25 blur-3xl" aria-hidden="true" />
         <div className="pointer-events-none absolute top-48 -left-20 -z-10 size-80 rounded-full bg-chart-1/20 blur-3xl" aria-hidden="true" />
 
-        <header className="grid gap-5 rounded-[2rem] border border-primary/20 bg-card/85 p-5 shadow-2xl shadow-primary/10 backdrop-blur sm:p-8 lg:grid-cols-[1.3fr_0.7fr] lg:items-end">
-          <div className="space-y-3">
-            <Badge variant="outline" className="bg-background/70 uppercase tracking-[0.22em] text-primary">
-              {setup("pageKicker")}
-            </Badge>
-            <div className="space-y-3">
-              <h1 className="max-w-3xl text-4xl font-black tracking-tight sm:text-5xl">
-                {setup("pageTitle")}
-              </h1>
-              <p className="max-w-2xl text-base leading-7 text-muted-foreground sm:text-lg">
-                {setup("pageSubtitle", { mode: modeLabel })}
-              </p>
-            </div>
-          </div>
-          <Card className="border-primary/20 bg-background/70 py-5">
-            <CardHeader>
-              <CardTitle className="text-base">{setup("progressLabel")}</CardTitle>
-              <CardDescription>{setup("stepCounter", { current: currentStepIndex + 1, total: STEP_IDS.length })}</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="grid grid-cols-4 gap-2" aria-hidden="true">
-                {STEP_IDS.map((stepId, index) => (
-                  <span
-                    key={stepId}
-                    className={cn(
-                      "h-2 rounded-full bg-muted transition-colors",
-                      index <= currentStepIndex && "bg-primary",
-                    )}
-                  />
-                ))}
-              </div>
-              <p className="text-sm font-medium">{setup(`steps.${step}`)}</p>
+        {step === "mode" ? (
+          <Card className="border-primary/20 bg-card/90 p-0 shadow-2xl shadow-primary/10 backdrop-blur">
+            <CardContent className="p-3 sm:p-5">
+              <ModeSelector selectedMode={selectedMode} onSelectMode={selectModeAndConfigure} />
             </CardContent>
           </Card>
-        </header>
+        ) : (
+          <>
+            <div className="flex items-center justify-between gap-2 rounded-2xl border border-primary/20 bg-card/85 p-2 shadow-xl shadow-primary/10 backdrop-blur sm:p-3">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="min-h-10 rounded-xl"
+                disabled={isStarting}
+                onClick={returnToModeSelection}
+              >
+                <ArrowLeft aria-hidden="true" />
+                {setup("back")}
+              </Button>
+              <div className="min-w-0 text-right">
+                <p className="text-[0.65rem] font-bold uppercase tracking-[0.18em] text-primary">{setup("pageKicker")}</p>
+                <p className="truncate text-sm font-black sm:text-base">{modeLabel}</p>
+              </div>
+            </div>
 
-        <Card className="border-primary/20 bg-card/90 p-0 shadow-2xl shadow-primary/10 backdrop-blur">
-          <CardContent className="p-5 sm:p-8">
-            {step === "mode" ? (
-              <ModeSelector selectedMode={selectedMode} onSelectMode={setSelectedMode} />
-            ) : null}
-            {step === "players" ? (
-              <div className="space-y-5">
+            <Card className="border-primary/20 bg-card/90 p-0 shadow-2xl shadow-primary/10 backdrop-blur">
+              <CardContent className="grid gap-4 p-3 sm:p-5 xl:grid-cols-[0.95fr_1.05fr] xl:items-start">
                 <PlayerConfig
                   players={players}
                   maxHumanPlayers={MAX_HUMAN_PLAYERS}
@@ -557,47 +519,23 @@ export function SetupFlow({ locale }: SetupFlowProps) {
                   }}
                   onToggleSessionPlayer={toggleSessionPlayer}
                 />
-              </div>
-            ) : null}
-            {step === "config" ? (
-              <GameConfigForm config={selectedConfig} onConfigChange={updateConfig} />
-            ) : null}
-            {step === "review" ? (
-              <ReviewStart
-                config={buildConfigWithPlayers(selectedConfig, players)}
-                players={players}
-                isStarting={isStarting}
-                validationMessage={startValidationMessage}
-                onStart={() => {
-                  void startGame();
-                }}
-              />
-            ) : null}
-          </CardContent>
 
-          <Separator />
-
-          <div className="flex flex-col-reverse gap-3 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-8">
-            <Button
-              type="button"
-              variant="outline"
-              size="lg"
-              className="min-h-12"
-              disabled={currentStepIndex === 0 || isStarting}
-              onClick={moveToPreviousStep}
-            >
-              <ArrowLeft aria-hidden="true" />
-              {setup("back")}
-            </Button>
-
-            {step !== "review" ? (
-              <Button type="button" size="lg" className="min-h-12" disabled={isStarting} onClick={moveToNextStep}>
-                {setup("next")}
-                <ArrowRight aria-hidden="true" />
-              </Button>
-            ) : null}
-          </div>
-        </Card>
+                <div className="space-y-4">
+                  <GameConfigForm config={selectedConfig} onConfigChange={updateConfig} />
+                  <ReviewStart
+                    config={buildConfigWithPlayers(selectedConfig, players)}
+                    players={players}
+                    isStarting={isStarting}
+                    validationMessage={startValidationMessage}
+                    onStart={() => {
+                      void startGame();
+                    }}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+          </>
+        )}
       </section>
     </main>
   );

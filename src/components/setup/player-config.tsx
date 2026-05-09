@@ -84,60 +84,36 @@ export function PlayerConfig({
   const canCreateHuman = canAddHuman && (!sessionBackedHumans || newHumanName.trim().length > 0);
 
   return (
-    <section className="space-y-5" aria-labelledby="player-config-title">
-      <div className="space-y-2">
-        <Badge variant="outline" className="bg-background/70 uppercase tracking-[0.18em] text-primary">
-          <UserRound className="size-3" aria-hidden="true" />
-          {setup("playerStepKicker")}
-        </Badge>
-        <div className="space-y-2">
-          <h2 id="player-config-title" className="text-2xl font-black tracking-tight sm:text-3xl">
+    <section className="space-y-3" aria-labelledby="player-config-title">
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div className="min-w-0 space-y-1">
+          <Badge variant="outline" className="bg-background/70 uppercase tracking-[0.16em] text-primary">
+            <UserRound className="size-3" aria-hidden="true" />
+            {setup("playerStepKicker")}
+          </Badge>
+          <h2 id="player-config-title" className="text-lg font-black tracking-tight sm:text-xl">
             {setup("playerStepTitle")}
           </h2>
-          <p className="max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">
+          <p className="max-w-xl text-xs leading-5 text-muted-foreground">
             {setup("playerStepDescription", { count: maxTotalPlayers })}
           </p>
         </div>
-      </div>
-
-      <div className="grid gap-3 sm:grid-cols-2">
-        <Card className="border-primary/15 bg-card/85 py-5">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <UserRound className="size-4" aria-hidden="true" />
-              {setup("humanPlayers")}
-            </CardTitle>
-            <CardDescription>{setup("humanLimitHint", { count: maxHumanPlayers })}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Badge variant="secondary">{setup("playerCount", { count: humanCount })}</Badge>
-          </CardContent>
-        </Card>
-
-        <Card className="border-secondary/20 bg-card/85 py-5">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Bot className="size-4" aria-hidden="true" />
-              {setup("dartBots")}
-            </CardTitle>
-            <CardDescription>{setup("botLimitHint", { count: maxTotalPlayers })}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Badge variant="secondary">{setup("botCount", { count: botCount })}</Badge>
-          </CardContent>
-        </Card>
+        <div className="flex flex-wrap justify-end gap-2">
+          <Badge variant="secondary">{setup("playerCount", { count: humanCount })}</Badge>
+          <Badge variant="outline">{setup("botCount", { count: botCount })}</Badge>
+        </div>
       </div>
 
       {sessionBackedHumans ? (
-        <Card className="border-primary/20 bg-background/65 py-4">
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-base">
+        <Card className="border-primary/20 bg-background/65 py-0">
+          <CardHeader className="p-3 pb-2">
+            <CardTitle className="flex items-center gap-2 text-sm">
               <UserRound className="size-4 text-primary" aria-hidden="true" />
               {setup("sessionPlayersTitle")}
             </CardTitle>
-            <CardDescription>{setup("sessionPlayersDescription")}</CardDescription>
+            <CardDescription className="text-xs">{setup("sessionPlayersDescription")}</CardDescription>
           </CardHeader>
-          <CardContent className="grid gap-2 sm:grid-cols-2">
+          <CardContent className="grid max-h-40 gap-2 overflow-y-auto p-3 pt-0 sm:grid-cols-2">
             {availableSessionPlayers.length > 0 ? availableSessionPlayers.map((player) => {
               const isSelected = selectedSessionPlayerIds.includes(player.id);
               const canToggleOn = isSelected || canAddHuman;
@@ -147,7 +123,7 @@ export function PlayerConfig({
                   key={player.id}
                   type="button"
                   variant={isSelected ? "default" : "outline"}
-                  className="min-h-12 justify-start rounded-xl"
+                  className="min-h-10 justify-start rounded-xl"
                   disabled={!canToggleOn}
                   aria-pressed={isSelected}
                   onClick={() => onToggleSessionPlayer?.(player.id)}
@@ -166,11 +142,11 @@ export function PlayerConfig({
         </Card>
       ) : null}
 
-      <div className="flex flex-col gap-3 sm:flex-row">
+      <div className="grid gap-2 sm:grid-cols-[1fr_auto_auto]">
         {sessionBackedHumans ? (
           <Input
             value={newHumanName}
-            className="min-h-12 flex-1 bg-background/65"
+            className="min-h-10 bg-background/65"
             placeholder={setup("newSessionPlayerPlaceholder")}
             aria-label={setup("newSessionPlayerName")}
             onChange={(event) => onNewHumanNameChange?.(event.target.value)}
@@ -178,8 +154,8 @@ export function PlayerConfig({
         ) : null}
         <Button
           type="button"
-          size="lg"
-          className="min-h-12 flex-1"
+          size="sm"
+          className="min-h-10"
           data-testid="add-player"
           disabled={!canCreateHuman}
           onClick={() => {
@@ -191,9 +167,9 @@ export function PlayerConfig({
         </Button>
         <Button
           type="button"
-          size="lg"
+          size="sm"
           variant="secondary"
-          className="min-h-12 flex-1"
+          className="min-h-10"
           data-testid="add-bot"
           disabled={!canAddPlayer}
           onClick={onAddBot}
@@ -209,10 +185,10 @@ export function PlayerConfig({
         </p>
       ) : null}
 
-      <div className="space-y-3">
+      <div className="space-y-2">
         {players.length === 0 ? (
             <Card className="border-dashed border-primary/20 bg-card/70">
-            <CardContent className="py-8 text-center text-sm text-muted-foreground">
+            <CardContent className="py-5 text-center text-sm text-muted-foreground">
               {setup("emptyPlayers")}
             </CardContent>
           </Card>
@@ -224,9 +200,9 @@ export function PlayerConfig({
           const botLevelId = `bot-level-${player.id}`;
 
           return (
-            <Card key={player.id} className="border-primary/15 bg-card/90 py-5 shadow-lg shadow-primary/5">
-              <CardContent className="grid gap-4 p-5 sm:grid-cols-[1fr_auto] sm:items-end">
-                <div className="grid gap-3 sm:grid-cols-[1fr_14rem] sm:items-end">
+            <Card key={player.id} className="border-primary/15 bg-card/90 py-0 shadow-lg shadow-primary/5">
+              <CardContent className="grid gap-3 p-3 sm:grid-cols-[1fr_auto] sm:items-end">
+                <div className="grid gap-2 sm:grid-cols-[1fr_12rem] sm:items-end">
                   <div className="space-y-2">
                     <div className="flex items-center gap-2">
                       <Badge variant={player.isBot ? "secondary" : "outline"}>
@@ -242,7 +218,7 @@ export function PlayerConfig({
                       value={player.name}
                       autoComplete="off"
                       placeholder={setup("playerName")}
-                      className="min-h-12 bg-background/65"
+                      className="min-h-10 bg-background/65"
                       disabled={sessionBackedHumans && !player.isBot}
                       onChange={(event) => onRenamePlayer(player.id, event.target.value)}
                     />
@@ -257,7 +233,7 @@ export function PlayerConfig({
                         value={String(player.botLevel ?? 1)}
                         onValueChange={(value) => onBotLevelChange(player.id, botLevelFromValue(value))}
                       >
-                        <SelectTrigger id={botLevelId} data-testid={`bot-level-${playerNumber}`} className="min-h-12 w-full bg-background/65">
+                        <SelectTrigger id={botLevelId} data-testid={`bot-level-${playerNumber}`} className="min-h-10 w-full bg-background/65">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -276,8 +252,8 @@ export function PlayerConfig({
                   <Button
                     type="button"
                     variant="ghost"
-                    size="lg"
-                    className="min-h-12 sm:px-4"
+                    size="sm"
+                    className="min-h-10 sm:px-4"
                     aria-label={setup("removePlayerA11y", { name: player.name || setup("playerNameFor", { number: playerNumber }) })}
                     onClick={() => onRemovePlayer(player.id)}
                   >

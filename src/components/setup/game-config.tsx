@@ -325,32 +325,32 @@ export function GameConfigForm({ config, onConfigChange }: GameConfigFormProps) 
   const setsToWin = config.matchFormat?.setsToWin ?? 1;
 
   return (
-    <section className="space-y-5" aria-labelledby="game-config-title">
-      <div className="space-y-2">
+    <section className="space-y-3" aria-labelledby="game-config-title">
+      <div className="space-y-1">
         <Badge variant="outline" className="bg-background/70 uppercase tracking-[0.18em] text-primary">
           <SlidersHorizontal className="size-3" aria-hidden="true" />
           {setup("configStepKicker")}
         </Badge>
-        <div className="space-y-2">
-          <h2 id="game-config-title" className="text-2xl font-black tracking-tight sm:text-3xl">
+        <div className="space-y-1">
+          <h2 id="game-config-title" className="text-lg font-black tracking-tight sm:text-xl">
             {setup("configStepTitle")}
           </h2>
-          <p className="max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">
+          <p className="max-w-2xl text-xs leading-5 text-muted-foreground">
             {setup("configStepDescription", { mode: modeLabel })}
           </p>
         </div>
       </div>
 
-      <Card className="border-primary/20 bg-card/95 shadow-xl shadow-primary/5">
-        <CardHeader>
-          <CardTitle className="flex flex-wrap items-center gap-2">
+      <Card className="border-primary/20 bg-card/95 py-0 shadow-xl shadow-primary/5">
+        <CardHeader className="p-3 pb-2">
+          <CardTitle className="flex flex-wrap items-center gap-2 text-sm">
             {setup("modeConfigTitle")}
             <Badge>{modeLabel}</Badge>
           </CardTitle>
-          <CardDescription>{setup("modeConfigDescription")}</CardDescription>
+          <CardDescription className="text-xs">{setup("modeConfigDescription")}</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="grid gap-4 sm:grid-cols-2">
+        <CardContent className="space-y-4 p-3 pt-0">
+          <div className="grid gap-3 sm:grid-cols-2">
             <ConfigField id="config-legsToWin" label={gameConfig("legsToWin")}>
               <Input
                 id="config-legsToWin"
@@ -391,7 +391,7 @@ export function GameConfigForm({ config, onConfigChange }: GameConfigFormProps) 
 
           <Separator />
 
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-3 sm:grid-cols-2">
             {config.mode === "x01" ? (
               <>
                 <ConfigField id="config-startingScore" label={gameConfig("startScore")}>

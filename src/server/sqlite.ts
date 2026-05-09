@@ -385,6 +385,32 @@ export function createSharedSessionPlayer(codeInput: string, nameInput: string):
   return rowToSessionPlayer(row);
 }
 
+export function deleteSharedSessionPlayer(codeInput: string, playerId: PlayerId): SharedSessionSummary | null {
+  const code = normalizeSessionCode(codeInput);
+
+  if (!isValidSessionCode(code)) {
+    return null;
+  }
+
+  const session = getSharedSession(code);
+
+  if (session === null) {
+    return null;
+  }
+
+  const timestamp = nowIso();
+  const db = getDatabase();
+
+  db.transaction(() => {
+    db.prepare("DELETE FROM session_players WHERE session_code = ? AND id = ?")
+      .run(code, playerId);
+    db.prepare("UPDATE sessions SET updated_at = ? WHERE code = ?")
+      .run(timestamp, code);
+  })();
+
+  return getSharedSession(code);
+}
+
 export function getSharedActiveGame(codeInput: string): SharedActiveGame | null {
   const code = normalizeSessionCode(codeInput);
 

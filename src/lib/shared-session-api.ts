@@ -96,6 +96,15 @@ export async function createSharedSessionPlayer(code: string, name: string): Pro
   });
 }
 
+export async function deleteSharedSessionPlayer(code: string, playerId: PlayerId): Promise<SharedSessionSummary> {
+  const response = await requestJson<SessionResponse>(`/api/sessions/${encodeURIComponent(code)}/players`, {
+    method: "DELETE",
+    body: JSON.stringify({ playerId }),
+  });
+
+  return response.session;
+}
+
 export async function fetchSharedActiveGame(code: string): Promise<SharedActiveGame | null> {
   const response = await requestJson<ActiveGameResponse>(`/api/sessions/${encodeURIComponent(code)}/active-game`);
 

@@ -15,6 +15,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 import { deleteHistoryEntry, loadHistory } from "@/services/history-service";
 
 import type { Locale } from "@/i18n/routing";
@@ -113,8 +114,13 @@ export function HistoryListScreen({ locale }: HistoryListScreenProps) {
   }
 
   return (
-    <main className="min-h-screen overflow-hidden bg-transparent px-4 py-6 text-foreground sm:px-6 lg:px-8">
-      <section className="relative mx-auto flex max-w-6xl flex-col gap-6">
+    <main
+      className={cn(
+        "grid min-h-[calc(100dvh-11.25rem)] overflow-x-hidden bg-transparent px-4 py-6 text-foreground sm:px-6 md:min-h-[calc(100dvh-5rem)] lg:px-8",
+        entries.length === 0 ? "items-center" : "items-start",
+      )}
+    >
+      <section className="relative mx-auto flex w-full max-w-6xl flex-col gap-6">
         <div className="pointer-events-none absolute -top-28 right-4 -z-10 size-72 rounded-full bg-chart-2/25 blur-3xl" aria-hidden="true" />
         <div className="pointer-events-none absolute top-96 -left-24 -z-10 size-80 rounded-full bg-chart-1/20 blur-3xl" aria-hidden="true" />
 

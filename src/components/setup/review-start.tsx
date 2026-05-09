@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, ArrowRight, CheckCircle2, ClipboardList, Play, UserRoundPlus } from "lucide-react";
+import { ArrowLeft, ArrowRight, CheckCircle2, ClipboardList, Play } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useMemo, useRef, useState } from "react";
@@ -15,6 +15,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { createSharedSessionPlayer } from "@/lib/shared-session-api";
 import { useGameStore } from "@/store";
 import { cn } from "@/lib/utils";
 
@@ -26,7 +27,7 @@ import {
 import { ModeSelector, modeMessageKeys } from "./mode-selector";
 import { botLevelMessageKeys, PlayerConfig } from "./player-config";
 
-import type { BotLevel, GameConfig, GameMode, PlayerDef } from "@/types";
+import type { BotLevel, GameConfig, GameMode, PlayerDef, SharedSessionPlayer } from "@/types";
 
 const MAX_HUMAN_PLAYERS = 20;
 const MAX_TOTAL_PLAYERS = 20;
@@ -62,6 +63,14 @@ function stepIndexFor(step: StepId): number {
 
 function normalizeName(name: string): string {
   return name.trim();
+}
+
+function playerDefFromSessionPlayer(player: SharedSessionPlayer): PlayerDef {
+  return {
+    id: player.id,
+    name: player.name,
+    isBot: false,
+  };
 }
 
 function modeSummaryItems(
@@ -237,19 +246,15 @@ export function SetupFlow({ locale }: SetupFlowProps) {
   const modes = useTranslations("Modes");
   const newGame = useGameStore((state) => state.newGame);
   const sharedSessionCode = useGameStore((state) => state.sharedSessionCode);
+  const sharedSessionDeviceId = useGameStore((state) => state.sharedSessionDeviceId);
+  const sharedSessionPlayerId = useGameStore((state) => state.sharedSessionPlayerId);
   const sharedSessionPlayers = useGameStore((state) => state.sharedSessionPlayers);
-  const nextHumanId = useRef(2);
+  const setSharedSessionContext = useGameStore((state) => state.setSharedSessionContext);
   const nextBotId = useRef(1);
   const [selectedMode, setSelectedMode] = useState<GameMode>("x01");
   const [configs, setConfigs] = useState<Record<GameMode, GameConfig>>(() => createDefaultGameConfigs());
   const [step, setStep] = useState<StepId>("mode");
-  const [players, setPlayers] = useState<PlayerDef[]>(() => [
-    {
-      id: "human-1",
-      name: setup("defaultHumanName", { number: 1 }),
-      isBot: false,
-    },
-  ]);
+  const [botPlayers, setBotPlayers] = useState<PlayerDef[]>([]);
   const [playerValidationMessage, setPlayerValidationMessage] = useState<string | null>(null);
   const [startValidationMessage, setStartValidationMessage] = useState<string | null>(null);
   const [isStarting, setIsStarting] = useState(false);
@@ -257,9 +262,12 @@ export function SetupFlow({ locale }: SetupFlowProps) {
   const currentStepIndex = stepIndexFor(step);
   const modeLabel = modes(modeMessageKeys[selectedMode]);
   const gameRoute = useMemo(() => gameRouteFor(locale), [locale]);
-  const reusableSessionPlayers = useMemo(
-    () => sharedSessionPlayers.filter((sessionPlayer) => !players.some((player) => player.id === sessionPlayer.id)),
-    [players, sharedSessionPlayers],
+  const players = useMemo(
+    () => [
+      ...sharedSessionPlayers.map(playerDefFromSessionPlayer),
+      ...botPlayers,
+    ],
+    [botPlayers, sharedSessionPlayers],
   );
 
   function validatePlayers(): ValidationResult {
@@ -309,7 +317,7 @@ export function SetupFlow({ locale }: SetupFlowProps) {
         return;
       }
 
-      setPlayers(validation.players);
+      setBotPlayers(validation.players.filter((player) => player.isBot));
       setPlayerValidationMessage(null);
     }
 
@@ -327,7 +335,7 @@ export function SetupFlow({ locale }: SetupFlowProps) {
     }));
   }
 
-  function addHumanPlayer() {
+  async function addHumanPlayer() {
     const humanCount = players.filter((player) => !player.isBot).length;
 
     if (players.length >= MAX_TOTAL_PLAYERS) {
@@ -340,17 +348,28 @@ export function SetupFlow({ locale }: SetupFlowProps) {
       return;
     }
 
-    const nextId = nextHumanId.current;
-    nextHumanId.current += 1;
-    setPlayerValidationMessage(null);
-    setPlayers((currentPlayers) => [
-      ...currentPlayers,
-      {
-        id: `human-${nextId}`,
-        name: setup("defaultHumanName", { number: nextId }),
-        isBot: false,
-      },
-    ]);
+    if (!sharedSessionCode || !sharedSessionDeviceId) {
+      setPlayerValidationMessage(sessionCopy("loadFailed"));
+      return;
+    }
+
+    try {
+      const nextNumber = humanCount + 1;
+      const response = await createSharedSessionPlayer(
+        sharedSessionCode,
+        setup("defaultHumanName", { number: nextNumber }),
+      );
+
+      setPlayerValidationMessage(null);
+      setSharedSessionContext({
+        code: response.session.code,
+        playerId: sharedSessionPlayerId,
+        deviceId: sharedSessionDeviceId,
+        players: response.session.players,
+      });
+    } catch {
+      setPlayerValidationMessage(sessionCopy("playerCreateFailed"));
+    }
   }
 
   function addBotPlayer() {
@@ -362,7 +381,7 @@ export function SetupFlow({ locale }: SetupFlowProps) {
     const nextId = nextBotId.current;
     nextBotId.current += 1;
     setPlayerValidationMessage(null);
-    setPlayers((currentPlayers) => [
+    setBotPlayers((currentPlayers) => [
       ...currentPlayers,
       {
         id: `bot-${nextId}`,
@@ -373,27 +392,8 @@ export function SetupFlow({ locale }: SetupFlowProps) {
     ]);
   }
 
-  function addSessionPlayer(playerId: string) {
-    const sessionPlayer = sharedSessionPlayers.find((candidate) => candidate.id === playerId);
-
-    if (!sessionPlayer || players.length >= MAX_TOTAL_PLAYERS) {
-      setPlayerValidationMessage(setup("errors.totalLimit", { count: MAX_TOTAL_PLAYERS }));
-      return;
-    }
-
-    setPlayerValidationMessage(null);
-    setPlayers((currentPlayers) => [
-      ...currentPlayers,
-      {
-        id: sessionPlayer.id,
-        name: sessionPlayer.name,
-        isBot: false,
-      },
-    ]);
-  }
-
   function removePlayer(playerId: string) {
-    setPlayers((currentPlayers) => currentPlayers.filter((player) => player.id !== playerId));
+    setBotPlayers((currentPlayers) => currentPlayers.filter((player) => player.id !== playerId));
   }
 
   async function startGame() {
@@ -470,32 +470,6 @@ export function SetupFlow({ locale }: SetupFlowProps) {
             ) : null}
             {step === "players" ? (
               <div className="space-y-5">
-                {sharedSessionCode && reusableSessionPlayers.length > 0 ? (
-                  <Card className="border-secondary/25 bg-background/70 py-4">
-                    <CardHeader className="gap-2 px-4">
-                      <CardTitle className="flex items-center gap-2 text-base">
-                        <UserRoundPlus className="size-4 text-secondary" aria-hidden="true" />
-                        {sessionCopy("setupPlayersTitle")}
-                      </CardTitle>
-                      <CardDescription>{sessionCopy("setupPlayersDescription", { code: sharedSessionCode })}</CardDescription>
-                    </CardHeader>
-                    <CardContent className="flex flex-wrap gap-2 px-4">
-                      {reusableSessionPlayers.map((sessionPlayer) => (
-                        <Button
-                          key={sessionPlayer.id}
-                          type="button"
-                          variant="secondary"
-                          size="sm"
-                          disabled={players.length >= MAX_TOTAL_PLAYERS}
-                          onClick={() => addSessionPlayer(sessionPlayer.id)}
-                        >
-                          {sessionCopy("addSetupPlayer", { player: sessionPlayer.name })}
-                        </Button>
-                      ))}
-                    </CardContent>
-                  </Card>
-                ) : null}
-
                 <PlayerConfig
                   players={players}
                   maxHumanPlayers={MAX_HUMAN_PLAYERS}
@@ -506,15 +480,16 @@ export function SetupFlow({ locale }: SetupFlowProps) {
                   onRemovePlayer={removePlayer}
                   onRenamePlayer={(playerId, name) => {
                     setPlayerValidationMessage(null);
-                    setPlayers((currentPlayers) => currentPlayers.map((player) => (
+                    setBotPlayers((currentPlayers) => currentPlayers.map((player) => (
                       player.id === playerId ? { ...player, name } : player
                     )));
                   }}
                   onBotLevelChange={(playerId, botLevel) => {
-                    setPlayers((currentPlayers) => currentPlayers.map((player) => (
+                    setBotPlayers((currentPlayers) => currentPlayers.map((player) => (
                       player.id === playerId ? { ...player, botLevel } : player
                     )));
                   }}
+                  sessionBackedHumans
                 />
               </div>
             ) : null}

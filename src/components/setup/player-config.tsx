@@ -39,11 +39,12 @@ type PlayerConfigProps = Readonly<{
   maxHumanPlayers: number;
   maxTotalPlayers: number;
   validationMessage?: string | null;
-  onAddHuman: () => void;
+  onAddHuman: () => void | Promise<void>;
   onAddBot: () => void;
   onRemovePlayer: (playerId: string) => void;
   onRenamePlayer: (playerId: string, name: string) => void;
   onBotLevelChange: (playerId: string, level: BotLevel) => void;
+  sessionBackedHumans?: boolean;
 }>;
 
 function botLevelFromValue(value: string): BotLevel {
@@ -62,6 +63,7 @@ export function PlayerConfig({
   onRemovePlayer,
   onRenamePlayer,
   onBotLevelChange,
+  sessionBackedHumans = false,
 }: PlayerConfigProps) {
   const setup = useTranslations("Setup");
   const levels = useTranslations("DartBotLevels");
@@ -122,7 +124,9 @@ export function PlayerConfig({
           className="min-h-12 flex-1"
           data-testid="add-player"
           disabled={!canAddHuman}
-          onClick={onAddHuman}
+          onClick={() => {
+            void onAddHuman();
+          }}
         >
           <Plus aria-hidden="true" />
           {setup("addPlayer")}
@@ -181,6 +185,7 @@ export function PlayerConfig({
                       autoComplete="off"
                       placeholder={setup("playerName")}
                       className="min-h-12 bg-background/65"
+                      disabled={sessionBackedHumans && !player.isBot}
                       onChange={(event) => onRenamePlayer(player.id, event.target.value)}
                     />
                   </div>
@@ -209,17 +214,19 @@ export function PlayerConfig({
                   ) : null}
                 </div>
 
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="lg"
-                  className="min-h-12 sm:px-4"
-                  aria-label={setup("removePlayerA11y", { name: player.name || setup("playerNameFor", { number: playerNumber }) })}
-                  onClick={() => onRemovePlayer(player.id)}
-                >
-                  <X aria-hidden="true" />
-                  <span className="sm:sr-only">{setup("removePlayer")}</span>
-                </Button>
+                {sessionBackedHumans && !player.isBot ? null : (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="lg"
+                    className="min-h-12 sm:px-4"
+                    aria-label={setup("removePlayerA11y", { name: player.name || setup("playerNameFor", { number: playerNumber }) })}
+                    onClick={() => onRemovePlayer(player.id)}
+                  >
+                    <X aria-hidden="true" />
+                    <span className="sm:sr-only">{setup("removePlayer")}</span>
+                  </Button>
+                )}
               </CardContent>
             </Card>
           );

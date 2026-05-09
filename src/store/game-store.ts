@@ -69,10 +69,11 @@ export type GameStoreState = ActiveGameSnapshot & {
   sharedSyncError: string | null;
   newGame: (config: GameConfig, players: readonly PlayerDef[]) => Promise<void>;
   throwDart: (dart: Dart) => Promise<void>;
+  replaceCurrentTurnDart: (dartIndex: DartIndex, dart: Dart) => Promise<void>;
   undo: () => Promise<void>;
   nextTurn: () => Promise<void>;
   continueAfterWinner: () => Promise<void>;
-  resumeActiveGame: () => Promise<GameState | null>;
+  resumeActiveGame: (gameId?: string) => Promise<GameState | null>;
   setSharedSessionContext: (context: {
     code: string | null;
     playerId: PlayerId | null;
@@ -164,6 +165,33 @@ function lastDartEventIndex(eventLog: readonly GameEvent[]): number {
   }
 
   return -1;
+}
+
+function currentTurnDartEventIndex(
+  eventLog: readonly GameEvent[],
+  playerId: PlayerId,
+  dartIndex: DartIndex,
+): number {
+  let boundaryIndex = -1;
+
+  for (let index = eventLog.length - 1; index >= 0; index -= 1) {
+    if (isTurnBoundaryEvent(eventLog[index])) {
+      boundaryIndex = index;
+      break;
+    }
+  }
+
+  const currentTurnDartIndexes: number[] = [];
+
+  for (let index = boundaryIndex + 1; index < eventLog.length; index += 1) {
+    const event = eventLog[index];
+
+    if (event.type === "dart_thrown" && event.playerId === playerId) {
+      currentTurnDartIndexes.push(index);
+    }
+  }
+
+  return currentTurnDartIndexes[dartIndex] ?? -1;
 }
 
 function playerDefsFromState(state: GameState): readonly PlayerDef[] {
@@ -527,6 +555,46 @@ export const useGameStore = create<GameStoreState>()((set, get) => ({
     set(await saveSnapshotEverywhere(nextState, get));
   },
 
+  async replaceCurrentTurnDart(dartIndex, dart) {
+    const { gameState, eventLog } = get();
+    const playerId = gameState?.activePlayerId;
+
+    if (!gameState || !playerId || gameState.phase !== "playing" || dartIndex >= gameState.currentTurn.length) {
+      return;
+    }
+
+    const eventIndex = currentTurnDartEventIndex(eventLog, playerId, dartIndex);
+
+    if (eventIndex === -1) {
+      return;
+    }
+
+    const retainedEvents = eventLog.slice(0, eventIndex);
+    const replayedState = replayEventsForMode(createReplayBase(gameState), retainedEvents);
+    const replacementIndex = dartIndexFor(replayedState.currentTurn.length);
+
+    if (replacementIndex !== dartIndex) {
+      return;
+    }
+
+    const occurredAt = occurredAtNow();
+    const event: GameEvent = {
+      id: eventIdFor(replayedState, "dart_thrown", retainedEvents, occurredAt),
+      type: "dart_thrown",
+      occurredAt,
+      playerId,
+      dart,
+      dartIndex: replacementIndex,
+    };
+    const nextState = reduceForMode(replayedState, event);
+
+    if (nextState === replayedState) {
+      return;
+    }
+
+    set(await saveSnapshotEverywhere(nextState, get));
+  },
+
   async undo() {
     const { gameState, eventLog } = get();
 
@@ -586,10 +654,10 @@ export const useGameStore = create<GameStoreState>()((set, get) => ({
     set(await saveSnapshotEverywhere(nextState, get));
   },
 
-  async resumeActiveGame() {
+  async resumeActiveGame(gameId) {
     const { sharedSessionCode } = get();
 
-    if (sharedSessionCode) {
+    if (sharedSessionCode && gameId === undefined) {
       const sharedState = await get().refreshSharedActiveGame();
 
       if (sharedState !== null) {
@@ -597,7 +665,7 @@ export const useGameStore = create<GameStoreState>()((set, get) => ({
       }
     }
 
-    const activeGame = await loadActiveGame();
+    const activeGame = await loadActiveGame(gameId);
 
     if (activeGame === null) {
       set({
@@ -640,8 +708,11 @@ export const useGameStore = create<GameStoreState>()((set, get) => ({
   async hydrateSharedActiveGame(activeGame) {
     if (activeGame === null) {
       const clearedSessionCode = get().sharedSessionCode;
+      const clearedGameId = get().gameState?.id;
 
-      await clearActiveGame();
+      if (clearedGameId) {
+        await clearActiveGame(clearedGameId);
+      }
 
       if (get().sharedSessionCode !== clearedSessionCode) {
         return get().gameState;
@@ -667,7 +738,11 @@ export const useGameStore = create<GameStoreState>()((set, get) => ({
     if (snapshot.gameState) {
       await saveActiveGame(snapshot.gameState, snapshot.eventLog);
     } else {
-      await clearActiveGame();
+      const currentGameId = get().gameState?.id;
+
+      if (currentGameId) {
+        await clearActiveGame(currentGameId);
+      }
     }
 
     if (get().sharedSessionCode !== activeGameSessionCode) {
@@ -698,7 +773,11 @@ export const useGameStore = create<GameStoreState>()((set, get) => ({
       }
 
       if (activeGame === null) {
-        await clearActiveGame();
+        const currentGameId = get().gameState?.id;
+
+        if (currentGameId) {
+          await clearActiveGame(currentGameId);
+        }
 
         if (get().sharedSessionCode !== sharedSessionCode) {
           return get().gameState;
@@ -774,7 +853,7 @@ export const useGameStore = create<GameStoreState>()((set, get) => ({
       }
     }
 
-    await clearActiveGame();
+    await clearActiveGame(gameState.id);
     set({
       ...emptySnapshot(),
       sharedRevision: sharedSessionCode ? 0 : get().sharedRevision,

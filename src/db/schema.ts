@@ -27,7 +27,7 @@ export type StoredGameRecord = {
 };
 
 export type ActiveGameRecord = {
-  id: "current";
+  id: string;
   gameState: GameState;
   eventLog: readonly GameEvent[];
   updatedAt: string;
@@ -35,7 +35,7 @@ export type ActiveGameRecord = {
 
 export class FlechettasDatabase extends Dexie {
   games!: Table<StoredGameRecord, string>;
-  activeGame!: Table<ActiveGameRecord, "current">;
+  activeGame!: Table<ActiveGameRecord, string>;
 
   constructor() {
     super(DATABASE_NAME);

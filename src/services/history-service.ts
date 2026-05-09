@@ -329,7 +329,7 @@ export async function onGameComplete(
   const gameId = await saveCompletionRecord(state, eventLog, summary);
 
   if (options.clearActive ?? true) {
-    await clearActiveGame();
+    await clearActiveGame(state.id);
   }
 
   return gameId;

@@ -1,5 +1,7 @@
 import type { PlayerId } from "@/types";
 
+import { normalizeSharedSessionCode } from "@/lib/shared-session-code";
+
 export const SESSION_CODE_KEY = "flechettas.sessionCode";
 export const SESSION_DEVICE_ID_KEY = "flechettas.session.deviceId";
 
@@ -12,7 +14,7 @@ export function sessionPlayerKey(code: string): string {
 }
 
 export function normalizeStoredSessionCode(value: string): string {
-  return value.trim().toUpperCase().replace(/[^0-9A-Z]/g, "");
+  return normalizeSharedSessionCode(value);
 }
 
 export function readStoredSessionCode(): string | null {

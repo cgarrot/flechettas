@@ -5,6 +5,11 @@ import { mkdirSync } from "node:fs";
 import path from "node:path";
 import { randomInt, randomUUID } from "node:crypto";
 
+import {
+  isValidSharedSessionCode,
+  MIN_SHARED_SESSION_CODE_LENGTH,
+  normalizeSharedSessionCode,
+} from "@/lib/shared-session-code";
 import { HttpResponseError } from "@/server/route-utils";
 
 import type {
@@ -79,8 +84,6 @@ type SaveCompletedGameSuccess = {
 export type SaveCompletedGameResult = SaveCompletedGameSuccess | SaveCompletedGameConflict;
 
 const CODE_ALPHABET = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
-const MIN_CODE_LENGTH = 4;
-const MAX_CODE_LENGTH = 12;
 export const MAX_SESSION_PLAYERS = 20;
 const MAX_COMPLETED_GAMES_PER_SESSION = 1_000;
 
@@ -97,13 +100,11 @@ function nowIso(): string {
 }
 
 export function normalizeSessionCode(input: string): string {
-  return input.trim().toUpperCase().replace(/[^0-9A-Z]/g, "");
+  return normalizeSharedSessionCode(input);
 }
 
 export function isValidSessionCode(code: string): boolean {
-  return code.length >= MIN_CODE_LENGTH &&
-    code.length <= MAX_CODE_LENGTH &&
-    /^[0-9A-Z]+$/.test(code);
+  return isValidSharedSessionCode(code);
 }
 
 function assertValidSessionCode(code: string): void {
@@ -189,7 +190,7 @@ function getDatabase(): SqliteDatabase {
 function randomSessionCode(): string {
   let code = "";
 
-  for (let index = 0; index < MIN_CODE_LENGTH; index += 1) {
+  for (let index = 0; index < MIN_SHARED_SESSION_CODE_LENGTH; index += 1) {
     code += CODE_ALPHABET[randomInt(CODE_ALPHABET.length)];
   }
 

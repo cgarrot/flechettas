@@ -370,6 +370,18 @@ function continueStateAfterWinner(state: GameState, eventLog: readonly GameEvent
   return continuedState === state ? null : continuedState;
 }
 
+function shouldRetrySharedSaveAfterConflict(
+  localSnapshot: ActiveGameSnapshot,
+  remoteActiveGame: SharedActiveGame,
+): boolean {
+  const localGameId = localSnapshot.gameState?.id;
+  const remoteGameId = remoteActiveGame.snapshot.gameState?.id;
+
+  return localGameId !== undefined &&
+    localGameId === remoteGameId &&
+    localSnapshot.eventLog.length > remoteActiveGame.snapshot.eventLog.length;
+}
+
 async function saveSharedSnapshotIfNeeded(
   storeState: GameStoreState,
   snapshot: ActiveGameSnapshot,
@@ -378,13 +390,23 @@ async function saveSharedSnapshotIfNeeded(
     return null;
   }
 
-  const result = await saveSharedActiveGame({
+  let result = await saveSharedActiveGame({
     code: storeState.sharedSessionCode,
     snapshot,
     expectedRevision: storeState.sharedRevision,
     updatedByPlayerId: storeState.sharedSessionPlayerId,
     updatedByDeviceId: storeState.sharedSessionDeviceId,
   });
+
+  if (!result.ok && result.activeGame && shouldRetrySharedSaveAfterConflict(snapshot, result.activeGame)) {
+    result = await saveSharedActiveGame({
+      code: storeState.sharedSessionCode,
+      snapshot,
+      expectedRevision: result.revision,
+      updatedByPlayerId: storeState.sharedSessionPlayerId,
+      updatedByDeviceId: storeState.sharedSessionDeviceId,
+    });
+  }
 
   if (result.ok) {
     return {

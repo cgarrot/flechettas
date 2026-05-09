@@ -171,7 +171,7 @@
     "promptTitle": "Partager ce pupitre",
     "promptDescription": "Saisissez un code de session ou créez-en un. Tout le site utilise maintenant cette session et sa liste de joueurs.",
     "codeLabel": "Code de session partagée",
-    "codePlaceholder": "Code",
+    "codePlaceholder": "Code à 4 caractères",
     "join": "Rejoindre",
     "create": "Créer",
     "active": "Session partagée {code}",
@@ -182,6 +182,8 @@
     "playerNamePlaceholder": "Nouveau joueur",
     "addPlayer": "Ajouter joueur",
     "change": "Changer",
+    "codeRequired": "Saisissez un code de session.",
+    "codeInvalid": "Le code doit contenir au moins {min} lettres ou chiffres. Créez une session ou saisissez le code complet.",
     "loadFailed": "Impossible de charger la session partagée.",
     "createFailed": "Impossible de créer la session partagée.",
     "playerCreateFailed": "Impossible d'ajouter le joueur."

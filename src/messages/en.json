@@ -171,7 +171,7 @@
     "promptTitle": "Share this match table",
     "promptDescription": "Enter a session code or create one. The whole site now uses this shared session and player list.",
     "codeLabel": "Shared session code",
-    "codePlaceholder": "Code",
+    "codePlaceholder": "4-character code",
     "join": "Join",
     "create": "Create",
     "active": "Shared session {code}",
@@ -182,6 +182,8 @@
     "playerNamePlaceholder": "New player",
     "addPlayer": "Add player",
     "change": "Change",
+    "codeRequired": "Enter a session code.",
+    "codeInvalid": "The code must contain at least {min} letters or numbers. Create a session or enter the full code.",
     "loadFailed": "The shared session could not be loaded.",
     "createFailed": "The shared session could not be created.",
     "playerCreateFailed": "The player could not be added."

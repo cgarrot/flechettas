@@ -64,7 +64,9 @@ export function ScoringInput({ className }: ScoringInputProps) {
   const canThrowDart = hasPlayableTurn && !isSubmitting;
   const selectedMultiplierLabel = selectedMultiplier === 1
     ? scoring("single")
-    : scoring("multiplierBadge", { multiplier: selectedMultiplier });
+    : selectedMultiplier === 2
+      ? scoring("double")
+      : scoring("triple");
 
   function selectMultiplier(multiplier: Multiplier) {
     setSelectedMultiplier(multiplier);
@@ -145,7 +147,7 @@ export function ScoringInput({ className }: ScoringInputProps) {
                 onClick={() => selectMultiplier(option.value)}
               >
                 <span>{scoring(option.shortKey)}</span>
-                {isSelected ? <span className="text-[0.62rem] opacity-80">{selectedMultiplierLabel}</span> : null}
+                <span className="text-[0.62rem] opacity-80">{scoring(option.labelKey)}</span>
               </Button>
             );
           })}
@@ -155,9 +157,11 @@ export function ScoringInput({ className }: ScoringInputProps) {
           {NUMBER_SEGMENTS.map((segment) => {
             const dart = createTargetDart(segment, selectedMultiplier);
             const value = dart ? dartScore(dart) : 0;
-            const multiplierBadge = selectedMultiplier === 1
-              ? scoring("singleShort")
-              : scoring("multiplierBadge", { multiplier: selectedMultiplier });
+            const scoreFormula = scoring("scoreFormula", {
+              multiplier: selectedMultiplier,
+              segment,
+              score: value,
+            });
 
             return (
               <Button
@@ -170,7 +174,7 @@ export function ScoringInput({ className }: ScoringInputProps) {
                   selectedMultiplier === 3 && "hover:bg-accent/15",
                 )}
                 data-testid={`seg-${segment}`}
-                aria-label={`${segment}, ${value}`}
+                aria-label={scoreFormula}
                 disabled={!canThrowDart}
                 onClick={() => scoreTarget(segment)}
               >
@@ -181,7 +185,7 @@ export function ScoringInput({ className }: ScoringInputProps) {
                   selectedMultiplier === 2 && "text-secondary",
                   selectedMultiplier === 3 && "text-accent",
                 )}>
-                  {multiplierBadge}
+                  {scoreFormula}
                 </span>
               </Button>
             );

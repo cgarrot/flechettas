@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { formatDart } from "@/engine";
+import { dartScore, formatDart } from "@/engine";
 import { cn } from "@/lib/utils";
 import { useGameStore } from "@/store";
 
@@ -72,18 +72,32 @@ export function TurnIndicator({ botPlayback, className }: TurnIndicatorProps) {
               {game("dartCounter", { current: dartNumber, total: 3 })}
             </p>
           </div>
-          <div className="col-span-2 flex gap-1.5" aria-hidden="true">
+          <div className="col-span-2 grid grid-cols-3 gap-1.5">
             {[0, 1, 2].map((index) => (
-              <span
+              <div
                 key={index}
                 className={cn(
-                  "h-1.5 flex-1 rounded-full border border-border/70 bg-muted text-xs font-black text-muted-foreground sm:h-2",
-                  index < currentTurnLength && "border-primary bg-primary text-primary-foreground shadow-lg shadow-primary/20",
-                  index + 1 === dartNumber && currentTurnLength < 3 && "border-accent text-accent shadow-lg shadow-accent/15",
+                  "rounded-xl border border-border/70 bg-muted/55 px-2 py-1.5 text-center text-muted-foreground",
+                  index < currentTurnLength && "border-primary/50 bg-primary/15 text-foreground shadow-lg shadow-primary/10",
+                  index + 1 === dartNumber && currentTurnLength < 3 && "border-accent/60 bg-accent/10 text-foreground shadow-lg shadow-accent/10",
                 )}
               >
-                <span className="sr-only">{index + 1}</span>
-              </span>
+                <span className="block text-[0.58rem] font-bold uppercase tracking-[0.12em] text-muted-foreground">
+                  {scoring("dartSlotLabel", { number: index + 1 })}
+                </span>
+                {currentTurn[index] ? (
+                  <>
+                    <span className="block font-mono text-base font-black leading-tight sm:text-lg">{formatDart(currentTurn[index])}</span>
+                    <span className="block text-[0.65rem] font-semibold text-primary">
+                      {scoring("dartSlotScore", { score: dartScore(currentTurn[index]) })}
+                    </span>
+                  </>
+                ) : (
+                  <span className="block py-1 font-mono text-sm font-black leading-tight text-muted-foreground/70 sm:text-base">
+                    {scoring("dartSlotEmpty")}
+                  </span>
+                )}
+              </div>
             ))}
           </div>
         </div>

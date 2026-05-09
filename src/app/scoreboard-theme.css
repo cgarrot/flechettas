@@ -35,6 +35,10 @@
   --sidebar-ring: oklch(0.66 0.19 145);
   --font-sans: "Avenir Next", "Trebuchet MS", Verdana, sans-serif;
   --font-mono: "Avenir Next Condensed", "DIN Condensed", "Bahnschrift Condensed", Impact, monospace;
+  --brand-logo-filter: grayscale(1) contrast(1.08) brightness(1.04);
+  --brand-logo-tile-background: linear-gradient(135deg, color-mix(in oklch, var(--card) 82%, var(--primary)), color-mix(in oklch, var(--background) 72%, var(--secondary)));
+  --brand-logo-tile-border: color-mix(in oklch, var(--primary) 36%, transparent);
+  --brand-logo-shadow: 0 18px 34px color-mix(in oklch, var(--primary) 20%, transparent);
 }
 
 .dark {
@@ -70,6 +74,7 @@
   --sidebar-accent-foreground: oklch(0.95 0.035 128);
   --sidebar-border: oklch(0.9 0.05 128 / 16%);
   --sidebar-ring: oklch(0.72 0.2 146);
+  --brand-logo-filter: grayscale(1) contrast(1.22) brightness(1.18);
 }
 
 .brass {
@@ -105,6 +110,7 @@
   --sidebar-accent-foreground: oklch(0.96 0.035 88);
   --sidebar-border: oklch(0.92 0.04 88 / 18%);
   --sidebar-ring: oklch(0.78 0.17 76);
+  --brand-logo-filter: grayscale(1) sepia(0.42) saturate(1.12) hue-rotate(350deg) contrast(1.14) brightness(1.08);
 }
 
 .club {
@@ -140,6 +146,7 @@
   --sidebar-accent-foreground: oklch(0.96 0.03 210);
   --sidebar-border: oklch(0.9 0.04 210 / 16%);
   --sidebar-ring: oklch(0.74 0.16 198);
+  --brand-logo-filter: grayscale(0.9) contrast(1.2) brightness(1.12);
 }
 
 .chalk {
@@ -175,6 +182,23 @@
   --sidebar-accent-foreground: oklch(0.2 0.04 135);
   --sidebar-border: oklch(0.73 0.05 113);
   --sidebar-ring: oklch(0.48 0.16 148);
+  --brand-logo-filter: grayscale(1) sepia(0.12) contrast(1.06) brightness(1.04);
+}
+
+.brand-logo-tile {
+  border-color: var(--brand-logo-tile-border);
+  background: var(--brand-logo-tile-background);
+  box-shadow: var(--brand-logo-shadow);
+}
+
+.brand-logo-image {
+  filter: var(--brand-logo-filter);
+  transform: scale(1.08);
+  transition: filter 180ms ease, transform 180ms ease;
+}
+
+.brand-logo-tile:hover .brand-logo-image {
+  transform: scale(1.14);
 }
 
 body {

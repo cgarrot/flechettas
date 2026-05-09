@@ -20,8 +20,6 @@ import {
   createTrainingState,
   createX01State,
   cricketReducer,
-  dartScore,
-  getCheckoutSuggestions,
   killerReducer,
   shanghaiReducer,
   trainingReducer,
@@ -43,17 +41,12 @@ import type {
   GameEvent,
   GameMode,
   GameState,
-  Multiplier,
-  NumberSegment,
   PlayerDef,
   PlayerId,
   SharedActiveGame,
   SharedSessionPlayer,
   Turn,
-  X01Config,
 } from "@/types";
-
-export type GameInputMode = "dart-by-dart" | "turn-total";
 
 type ActiveGameSnapshot = {
   gameState: GameState | null;
@@ -68,7 +61,6 @@ type UndoResult = {
 };
 
 export type GameStoreState = ActiveGameSnapshot & {
-  inputMode: GameInputMode;
   sharedSessionCode: string | null;
   sharedSessionPlayerId: PlayerId | null;
   sharedSessionDeviceId: string | null;
@@ -77,8 +69,6 @@ export type GameStoreState = ActiveGameSnapshot & {
   sharedSyncError: string | null;
   newGame: (config: GameConfig, players: readonly PlayerDef[]) => Promise<void>;
   throwDart: (dart: Dart) => Promise<void>;
-  switchInputMode: () => void;
-  submitTurnTotal: (total: number) => Promise<void>;
   undo: () => Promise<void>;
   nextTurn: () => Promise<void>;
   continueAfterWinner: () => Promise<void>;
@@ -93,26 +83,6 @@ export type GameStoreState = ActiveGameSnapshot & {
   refreshSharedActiveGame: () => Promise<GameState | null>;
   finishGame: () => Promise<string | null>;
 };
-
-const DEFAULT_INPUT_MODE: GameInputMode = "dart-by-dart";
-const NUMBER_SEGMENTS_DESC = [
-  20, 19, 18, 17, 16, 15, 14, 13, 12, 11,
-  10, 9, 8, 7, 6, 5, 4, 3, 2, 1,
-] as const satisfies readonly NumberSegment[];
-const MISS_DART: Dart = { miss: true };
-
-function numberDart(segment: NumberSegment, multiplier: Multiplier): Dart {
-  return { segment, multiplier };
-}
-
-const TURN_TOTAL_DART_OPTIONS = [
-  MISS_DART,
-  ...NUMBER_SEGMENTS_DESC.map((segment) => numberDart(segment, 3)),
-  { segment: 50, multiplier: 1 },
-  ...NUMBER_SEGMENTS_DESC.map((segment) => numberDart(segment, 2)),
-  { segment: 25, multiplier: 1 },
-  ...NUMBER_SEGMENTS_DESC.map((segment) => numberDart(segment, 1)),
-] as const satisfies readonly Dart[];
 
 function emptySnapshot(): ActiveGameSnapshot {
   return {
@@ -139,99 +109,6 @@ function snapshotWithEventLog(gameState: GameState, eventLog: readonly GameEvent
     mode: gameState.mode,
     config: gameState.config,
   };
-}
-
-function cloneDart(dart: Dart): Dart {
-  if ("miss" in dart) {
-    return { miss: true };
-  }
-
-  if (dart.segment === 25) {
-    return { segment: 25, multiplier: 1 };
-  }
-
-  if (dart.segment === 50) {
-    return { segment: 50, multiplier: 1 };
-  }
-
-  return { segment: dart.segment, multiplier: dart.multiplier };
-}
-
-function isDoubleDart(dart: Dart): boolean {
-  if ("miss" in dart) {
-    return false;
-  }
-
-  return dart.segment === 50 || dart.multiplier === 2;
-}
-
-function routeStartsWithDouble(route: readonly Dart[]): boolean {
-  const firstScoringDart = route.find((dart) => dartScore(dart) > 0);
-
-  return firstScoringDart !== undefined && isDoubleDart(firstScoringDart);
-}
-
-function isX01StateWithConfig(
-  state: GameState,
-): state is GameState & { config: X01Config } {
-  return state.mode === "x01" && state.config.mode === "x01";
-}
-
-function activeX01RemainingScore(state: GameState): number | null {
-  const player = state.players.find((candidate) => candidate.id === state.activePlayerId);
-
-  if (!player || player.modeState.mode !== "x01") {
-    return null;
-  }
-
-  return player.modeState.remainingScore;
-}
-
-function routeScore(route: readonly Dart[]): number {
-  return route.reduce((total, dart) => total + dartScore(dart), 0);
-}
-
-function cloneRoute(route: readonly Dart[]): Dart[] {
-  return route.map(cloneDart);
-}
-
-function synthesizeTurnTotalDarts(state: GameState & { config: X01Config }, total: number): Dart[] | null {
-  const remainingScore = activeX01RemainingScore(state);
-
-  if (remainingScore === null) {
-    return null;
-  }
-
-  if (total === remainingScore && (state.config.doubleOut || state.config.masterOut === true)) {
-    const [checkoutRoute] = getCheckoutSuggestions(remainingScore);
-
-    return checkoutRoute ? cloneRoute(checkoutRoute) : null;
-  }
-
-  const requiresOpeningDouble =
-    state.config.doubleIn === true &&
-    remainingScore === state.config.startingScore &&
-    total > 0;
-
-  for (const firstDart of TURN_TOTAL_DART_OPTIONS) {
-    for (const secondDart of TURN_TOTAL_DART_OPTIONS) {
-      for (const thirdDart of TURN_TOTAL_DART_OPTIONS) {
-        const route = [firstDart, secondDart, thirdDart];
-
-        if (routeScore(route) !== total) {
-          continue;
-        }
-
-        if (requiresOpeningDouble && !routeStartsWithDouble(route)) {
-          continue;
-        }
-
-        return cloneRoute(route);
-      }
-    }
-  }
-
-  return null;
 }
 
 function createStateForConfig(
@@ -566,7 +443,6 @@ async function saveSnapshotEverywhere(
 
 export const useGameStore = create<GameStoreState>()((set, get) => ({
   ...emptySnapshot(),
-  inputMode: DEFAULT_INPUT_MODE,
   sharedSessionCode: null,
   sharedSessionPlayerId: null,
   sharedSessionDeviceId: null,
@@ -594,7 +470,6 @@ export const useGameStore = create<GameStoreState>()((set, get) => ({
 
     set({
       ...snapshot,
-      inputMode: DEFAULT_INPUT_MODE,
     });
   },
 
@@ -625,80 +500,6 @@ export const useGameStore = create<GameStoreState>()((set, get) => ({
 
     if (nextState === gameState) {
       return;
-    }
-
-    set(await saveSnapshotEverywhere(nextState, get));
-  },
-
-  switchInputMode() {
-    set(({ inputMode }) => ({
-      inputMode: inputMode === "dart-by-dart" ? "turn-total" : "dart-by-dart",
-    }));
-  },
-
-  async submitTurnTotal(total) {
-    const { gameState, eventLog } = get();
-    const playerId = gameState?.activePlayerId;
-
-    if (
-      !gameState ||
-      !playerId ||
-      !Number.isInteger(total) ||
-      total < 0 ||
-      total > 180 ||
-      gameState.currentTurn.length > 0 ||
-      !isX01StateWithConfig(gameState)
-    ) {
-      return;
-    }
-
-    const synthesizedDarts = synthesizeTurnTotalDarts(gameState, total);
-
-    if (!synthesizedDarts) {
-      return;
-    }
-
-    const occurredAt = occurredAtNow();
-    const event: GameEvent = {
-      id: eventIdFor(gameState, "turn_total_submitted", eventLog, occurredAt),
-      type: "turn_total_submitted",
-      occurredAt,
-      playerId,
-      total,
-      darts: synthesizedDarts,
-    };
-    let nextState = reduceForMode(gameState, event);
-    let nextEventLog = [...nextState.events];
-
-    if (nextState === gameState) {
-      return;
-    }
-
-    for (const dart of synthesizedDarts) {
-      const nextPlayerId = nextState.activePlayerId;
-      const dartIndex = dartIndexFor(nextState.currentTurn.length);
-
-      if (nextState.phase !== "playing" || !nextPlayerId || dartIndex === null) {
-        break;
-      }
-
-      const dartOccurredAt = occurredAtNow();
-      const dartEvent: GameEvent = {
-        id: eventIdFor(nextState, "dart_thrown", nextEventLog, dartOccurredAt),
-        type: "dart_thrown",
-        occurredAt: dartOccurredAt,
-        playerId: nextPlayerId,
-        dart,
-        dartIndex,
-      };
-      const stateAfterDart = reduceForMode(nextState, dartEvent);
-
-      if (stateAfterDart === nextState) {
-        break;
-      }
-
-      nextState = stateAfterDart;
-      nextEventLog = [...nextState.events];
     }
 
     set(await saveSnapshotEverywhere(nextState, get));
@@ -779,7 +580,6 @@ export const useGameStore = create<GameStoreState>()((set, get) => ({
     if (activeGame === null) {
       set({
         ...emptySnapshot(),
-        inputMode: DEFAULT_INPUT_MODE,
       });
 
       return null;
@@ -794,7 +594,6 @@ export const useGameStore = create<GameStoreState>()((set, get) => ({
 
     set({
       ...snapshot,
-      inputMode: DEFAULT_INPUT_MODE,
     });
 
     return activeGame.gameState;
@@ -832,7 +631,6 @@ export const useGameStore = create<GameStoreState>()((set, get) => ({
       ...snapshot,
       sharedRevision: activeGame.revision,
       sharedSyncError: null,
-      inputMode: DEFAULT_INPUT_MODE,
     });
 
     return snapshot.gameState;
@@ -852,7 +650,6 @@ export const useGameStore = create<GameStoreState>()((set, get) => ({
         await clearActiveGame();
         set({
           ...emptySnapshot(),
-          inputMode: DEFAULT_INPUT_MODE,
           sharedRevision: 0,
           sharedSyncError: null,
         });
@@ -924,7 +721,6 @@ export const useGameStore = create<GameStoreState>()((set, get) => ({
     await clearActiveGame();
     set({
       ...emptySnapshot(),
-      inputMode: DEFAULT_INPUT_MODE,
       sharedRevision: sharedSessionCode ? 0 : get().sharedRevision,
     });
 

@@ -120,6 +120,7 @@ export function ActiveGameBanner({ locale }: ActiveGameBannerProps) {
   const modes = useTranslations("Modes");
   const scoring = useTranslations("Scoring");
   const gameState = useGameStore((state) => state.gameState);
+  const sharedSessionCode = useGameStore((state) => state.sharedSessionCode);
   const resumeActiveGame = useGameStore((state) => state.resumeActiveGame);
   const [hasCheckedActiveGame, setHasCheckedActiveGame] = useState(false);
   const [isResuming, setIsResuming] = useState(false);
@@ -129,6 +130,7 @@ export function ActiveGameBanner({ locale }: ActiveGameBannerProps) {
 
   useEffect(() => {
     let isCancelled = false;
+    setHasCheckedActiveGame(false);
 
     async function loadActiveGame() {
       try {
@@ -149,7 +151,7 @@ export function ActiveGameBanner({ locale }: ActiveGameBannerProps) {
     return () => {
       isCancelled = true;
     };
-  }, [resumeActiveGame]);
+  }, [resumeActiveGame, sharedSessionCode]);
 
   async function handleResume() {
     setIsResuming(true);
@@ -192,6 +194,7 @@ export function ActiveGameBanner({ locale }: ActiveGameBannerProps) {
   }
 
   const modeLabel = modes(modeMessageKeys[gameState.mode]);
+  const isSharedActiveGame = Boolean(sharedSessionCode);
 
   return (
     <Card className="overflow-hidden border-primary/25 bg-card/95 py-0 shadow-2xl shadow-primary/10 backdrop-blur" data-testid="active-game-banner">
@@ -210,7 +213,7 @@ export function ActiveGameBanner({ locale }: ActiveGameBannerProps) {
                 {home("activeGameTitle")}
               </CardTitle>
               <CardDescription className="text-sm leading-6 sm:text-base">
-                {home("activeGameDescription", { mode: modeLabel })}
+                {home(isSharedActiveGame ? "activeSharedGameDescription" : "activeGameDescription", { mode: modeLabel })}
               </CardDescription>
             </div>
           </div>
@@ -274,18 +277,20 @@ export function ActiveGameBanner({ locale }: ActiveGameBannerProps) {
             <ArrowRight aria-hidden="true" />
           </Button>
 
-          <Button
-            type="button"
-            variant="outline"
-            size="lg"
-            className="min-h-14 rounded-xl text-base text-destructive hover:bg-destructive/10 hover:text-destructive"
-            data-testid="abandon-game"
-            disabled={isResuming || isAbandoning}
-            onClick={() => setIsConfirmOpen(true)}
-          >
-            <Trash2 aria-hidden="true" />
-            {home("abandonGame")}
-          </Button>
+          {!isSharedActiveGame ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="lg"
+              className="min-h-14 rounded-xl text-base text-destructive hover:bg-destructive/10 hover:text-destructive"
+              data-testid="abandon-game"
+              disabled={isResuming || isAbandoning}
+              onClick={() => setIsConfirmOpen(true)}
+            >
+              <Trash2 aria-hidden="true" />
+              {home("abandonGame")}
+            </Button>
+          ) : null}
         </div>
       </CardContent>
 

@@ -4,6 +4,7 @@ import { getTranslations } from "next-intl/server";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ActiveGameBanner } from "@/components/home/active-game-banner";
 import {
   Card,
   CardContent,
@@ -32,8 +33,8 @@ export async function HomeScreen({ locale }: HomeScreenProps) {
   const historyRoute = historyRouteFor(locale);
 
   return (
-    <main className="h-[calc(100dvh-4.25rem)] -mb-[calc(7rem+env(safe-area-inset-bottom))] overflow-hidden bg-transparent px-4 py-3 pb-[calc(6.25rem+env(safe-area-inset-bottom))] text-foreground sm:px-6 sm:py-5 md:mb-0 md:h-[calc(100dvh-5rem)] md:pb-5 lg:px-8">
-      <section className="relative mx-auto grid h-full max-w-5xl content-center gap-3 sm:gap-4">
+    <main className="min-h-[calc(100dvh-4.25rem)] -mb-[calc(7rem+env(safe-area-inset-bottom))] overflow-x-hidden bg-transparent px-4 py-3 pb-[calc(6.25rem+env(safe-area-inset-bottom))] text-foreground sm:px-6 sm:py-5 md:mb-0 md:min-h-[calc(100dvh-5rem)] md:pb-5 lg:px-8">
+      <section className="relative mx-auto grid max-w-5xl content-center gap-3 sm:gap-4">
         <div className="pointer-events-none absolute -top-24 right-0 -z-10 size-72 rounded-full bg-chart-2/25 blur-3xl" aria-hidden="true" />
         <div className="pointer-events-none absolute bottom-0 -left-24 -z-10 size-72 rounded-full bg-chart-1/20 blur-3xl" aria-hidden="true" />
 
@@ -57,6 +58,8 @@ export async function HomeScreen({ locale }: HomeScreenProps) {
             {home("quickStartKicker")}
           </Badge>
         </header>
+
+        <ActiveGameBanner locale={locale} />
 
         <Card className="overflow-hidden border-primary/20 bg-card/95 py-0 shadow-2xl shadow-primary/10">
           <CardHeader className="gap-3 p-4 sm:p-6">

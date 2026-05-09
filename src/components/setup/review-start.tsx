@@ -3,7 +3,7 @@
 import { ArrowLeft, ArrowRight, CheckCircle2, ClipboardList, Play } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -27,7 +27,7 @@ import {
 import { ModeSelector, modeMessageKeys } from "./mode-selector";
 import { botLevelMessageKeys, PlayerConfig } from "./player-config";
 
-import type { BotLevel, GameConfig, GameMode, PlayerDef, SharedSessionPlayer } from "@/types";
+import type { BotLevel, GameConfig, GameMode, PlayerDef, PlayerId, SharedSessionPlayer } from "@/types";
 
 const MAX_HUMAN_PLAYERS = 20;
 const MAX_TOTAL_PLAYERS = 20;
@@ -71,6 +71,10 @@ function playerDefFromSessionPlayer(player: SharedSessionPlayer): PlayerDef {
     name: player.name,
     isBot: false,
   };
+}
+
+function isSharedSessionPlayer(player: SharedSessionPlayer | undefined): player is SharedSessionPlayer {
+  return player !== undefined;
 }
 
 function modeSummaryItems(
@@ -254,6 +258,8 @@ export function SetupFlow({ locale }: SetupFlowProps) {
   const [selectedMode, setSelectedMode] = useState<GameMode>("x01");
   const [configs, setConfigs] = useState<Record<GameMode, GameConfig>>(() => createDefaultGameConfigs());
   const [step, setStep] = useState<StepId>("mode");
+  const [selectedSessionPlayerIds, setSelectedSessionPlayerIds] = useState<PlayerId[]>([]);
+  const [newHumanName, setNewHumanName] = useState("");
   const [botPlayers, setBotPlayers] = useState<PlayerDef[]>([]);
   const [playerValidationMessage, setPlayerValidationMessage] = useState<string | null>(null);
   const [startValidationMessage, setStartValidationMessage] = useState<string | null>(null);
@@ -262,13 +268,35 @@ export function SetupFlow({ locale }: SetupFlowProps) {
   const currentStepIndex = stepIndexFor(step);
   const modeLabel = modes(modeMessageKeys[selectedMode]);
   const gameRoute = useMemo(() => gameRouteFor(locale), [locale]);
+  const selectedSessionPlayers = useMemo(
+    () => selectedSessionPlayerIds
+      .map((playerId) => sharedSessionPlayers.find((player) => player.id === playerId))
+      .filter(isSharedSessionPlayer),
+    [selectedSessionPlayerIds, sharedSessionPlayers],
+  );
   const players = useMemo(
     () => [
-      ...sharedSessionPlayers.map(playerDefFromSessionPlayer),
+      ...selectedSessionPlayers.map(playerDefFromSessionPlayer),
       ...botPlayers,
     ],
-    [botPlayers, sharedSessionPlayers],
+    [botPlayers, selectedSessionPlayers],
   );
+
+  useEffect(() => {
+    setSelectedSessionPlayerIds((currentPlayerIds) => currentPlayerIds.filter((playerId) => (
+      sharedSessionPlayers.some((player) => player.id === playerId)
+    )));
+  }, [sharedSessionPlayers]);
+
+  useEffect(() => {
+    if (!sharedSessionPlayerId || !sharedSessionPlayers.some((player) => player.id === sharedSessionPlayerId)) {
+      return;
+    }
+
+    setSelectedSessionPlayerIds((currentPlayerIds) => (
+      currentPlayerIds.length > 0 ? currentPlayerIds : [sharedSessionPlayerId]
+    ));
+  }, [sharedSessionPlayerId, sharedSessionPlayers]);
 
   function validatePlayers(): ValidationResult {
     if (players.length === 0) {
@@ -337,6 +365,7 @@ export function SetupFlow({ locale }: SetupFlowProps) {
 
   async function addHumanPlayer() {
     const humanCount = players.filter((player) => !player.isBot).length;
+    const requestedName = normalizeName(newHumanName);
 
     if (players.length >= MAX_TOTAL_PLAYERS) {
       setPlayerValidationMessage(setup("errors.totalLimit", { count: MAX_TOTAL_PLAYERS }));
@@ -348,19 +377,27 @@ export function SetupFlow({ locale }: SetupFlowProps) {
       return;
     }
 
+    if (requestedName.length === 0) {
+      setPlayerValidationMessage(setup("errors.namesRequired"));
+      return;
+    }
+
     if (!sharedSessionCode || !sharedSessionDeviceId) {
       setPlayerValidationMessage(sessionCopy("loadFailed"));
       return;
     }
 
     try {
-      const nextNumber = humanCount + 1;
       const response = await createSharedSessionPlayer(
         sharedSessionCode,
-        setup("defaultHumanName", { number: nextNumber }),
+        requestedName,
       );
 
       setPlayerValidationMessage(null);
+      setNewHumanName("");
+      setSelectedSessionPlayerIds((currentPlayerIds) => (
+        currentPlayerIds.includes(response.player.id) ? currentPlayerIds : [...currentPlayerIds, response.player.id]
+      ));
       setSharedSessionContext({
         code: response.session.code,
         playerId: sharedSessionPlayerId,
@@ -370,6 +407,27 @@ export function SetupFlow({ locale }: SetupFlowProps) {
     } catch {
       setPlayerValidationMessage(sessionCopy("playerCreateFailed"));
     }
+  }
+
+  function toggleSessionPlayer(playerId: string) {
+    setPlayerValidationMessage(null);
+
+    if (selectedSessionPlayerIds.includes(playerId)) {
+      setSelectedSessionPlayerIds((currentPlayerIds) => currentPlayerIds.filter((currentPlayerId) => currentPlayerId !== playerId));
+      return;
+    }
+
+    if (players.length >= MAX_TOTAL_PLAYERS) {
+      setPlayerValidationMessage(setup("errors.totalLimit", { count: MAX_TOTAL_PLAYERS }));
+      return;
+    }
+
+    if (players.filter((player) => !player.isBot).length >= MAX_HUMAN_PLAYERS) {
+      setPlayerValidationMessage(setup("errors.humanLimit", { count: MAX_HUMAN_PLAYERS }));
+      return;
+    }
+
+    setSelectedSessionPlayerIds((currentPlayerIds) => [...currentPlayerIds, playerId]);
   }
 
   function addBotPlayer() {
@@ -490,6 +548,14 @@ export function SetupFlow({ locale }: SetupFlowProps) {
                     )));
                   }}
                   sessionBackedHumans
+                  availableSessionPlayers={sharedSessionPlayers}
+                  selectedSessionPlayerIds={selectedSessionPlayerIds}
+                  newHumanName={newHumanName}
+                  onNewHumanNameChange={(name) => {
+                    setPlayerValidationMessage(null);
+                    setNewHumanName(name);
+                  }}
+                  onToggleSessionPlayer={toggleSessionPlayer}
                 />
               </div>
             ) : null}

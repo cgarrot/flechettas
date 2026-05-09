@@ -1,6 +1,6 @@
 "use client";
 
-import { Bot, Plus, UserRound, X } from "lucide-react";
+import { Bot, CheckCircle2, Plus, UserRound, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { Badge } from "@/components/ui/badge";
@@ -21,7 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-import type { BotLevel, PlayerDef } from "@/types";
+import type { BotLevel, PlayerDef, SharedSessionPlayer } from "@/types";
 
 export const BOT_LEVELS = [1, 2, 3, 4, 5, 6] as const satisfies readonly BotLevel[];
 
@@ -45,6 +45,11 @@ type PlayerConfigProps = Readonly<{
   onRenamePlayer: (playerId: string, name: string) => void;
   onBotLevelChange: (playerId: string, level: BotLevel) => void;
   sessionBackedHumans?: boolean;
+  availableSessionPlayers?: readonly SharedSessionPlayer[];
+  selectedSessionPlayerIds?: readonly string[];
+  newHumanName?: string;
+  onNewHumanNameChange?: (name: string) => void;
+  onToggleSessionPlayer?: (playerId: string) => void;
 }>;
 
 function botLevelFromValue(value: string): BotLevel {
@@ -64,6 +69,11 @@ export function PlayerConfig({
   onRenamePlayer,
   onBotLevelChange,
   sessionBackedHumans = false,
+  availableSessionPlayers = [],
+  selectedSessionPlayerIds = [],
+  newHumanName = "",
+  onNewHumanNameChange,
+  onToggleSessionPlayer,
 }: PlayerConfigProps) {
   const setup = useTranslations("Setup");
   const levels = useTranslations("DartBotLevels");
@@ -71,6 +81,7 @@ export function PlayerConfig({
   const botCount = players.length - humanCount;
   const canAddPlayer = players.length < maxTotalPlayers;
   const canAddHuman = canAddPlayer && humanCount < maxHumanPlayers;
+  const canCreateHuman = canAddHuman && (!sessionBackedHumans || newHumanName.trim().length > 0);
 
   return (
     <section className="space-y-5" aria-labelledby="player-config-title">
@@ -117,13 +128,60 @@ export function PlayerConfig({
         </Card>
       </div>
 
+      {sessionBackedHumans ? (
+        <Card className="border-primary/20 bg-background/65 py-4">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <UserRound className="size-4 text-primary" aria-hidden="true" />
+              {setup("sessionPlayersTitle")}
+            </CardTitle>
+            <CardDescription>{setup("sessionPlayersDescription")}</CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-2 sm:grid-cols-2">
+            {availableSessionPlayers.length > 0 ? availableSessionPlayers.map((player) => {
+              const isSelected = selectedSessionPlayerIds.includes(player.id);
+              const canToggleOn = isSelected || canAddHuman;
+
+              return (
+                <Button
+                  key={player.id}
+                  type="button"
+                  variant={isSelected ? "default" : "outline"}
+                  className="min-h-12 justify-start rounded-xl"
+                  disabled={!canToggleOn}
+                  aria-pressed={isSelected}
+                  onClick={() => onToggleSessionPlayer?.(player.id)}
+                >
+                  {isSelected ? <CheckCircle2 className="size-4" aria-hidden="true" /> : <UserRound className="size-4" aria-hidden="true" />}
+                  <span className="min-w-0 flex-1 truncate text-left">{player.name}</span>
+                  <span className="text-xs opacity-75">{isSelected ? setup("selectedForMatch") : setup("tapToInclude")}</span>
+                </Button>
+              );
+            }) : (
+              <p className="rounded-xl border border-dashed border-primary/20 bg-card/70 px-4 py-5 text-center text-sm text-muted-foreground sm:col-span-2">
+                {setup("noSessionPlayers")}
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      ) : null}
+
       <div className="flex flex-col gap-3 sm:flex-row">
+        {sessionBackedHumans ? (
+          <Input
+            value={newHumanName}
+            className="min-h-12 flex-1 bg-background/65"
+            placeholder={setup("newSessionPlayerPlaceholder")}
+            aria-label={setup("newSessionPlayerName")}
+            onChange={(event) => onNewHumanNameChange?.(event.target.value)}
+          />
+        ) : null}
         <Button
           type="button"
           size="lg"
           className="min-h-12 flex-1"
           data-testid="add-player"
-          disabled={!canAddHuman}
+          disabled={!canCreateHuman}
           onClick={() => {
             void onAddHuman();
           }}

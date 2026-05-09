@@ -1,11 +1,22 @@
 "use client";
 
-import { Link2, Plus, UserRound } from "lucide-react";
+import { BarChart3, Link2, Plus, UserRound, Users } from "lucide-react";
+import Link from "next/link";
 import { useTranslations } from "next-intl";
+import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -52,7 +63,14 @@ function importedSessionCodeFromUrl(): string | null {
   return code.length > 0 ? code : null;
 }
 
+function historyRouteFor(pathname: string): string {
+  const locale = pathname.split("/").filter(Boolean)[0];
+
+  return locale === "en" ? "/en/history" : "/fr/historique";
+}
+
 export function SessionGate() {
+  const pathname = usePathname();
   const sessionCopy = useTranslations("Session");
   const setSharedSessionContext = useGameStore((state) => state.setSharedSessionContext);
   const hydrateSharedActiveGame = useGameStore((state) => state.hydrateSharedActiveGame);
@@ -62,6 +80,7 @@ export function SessionGate() {
   const [deviceId, setDeviceId] = useState<string | null>(null);
   const [sessionCodeInput, setSessionCodeInput] = useState("");
   const [playerNameInput, setPlayerNameInput] = useState("");
+  const [isPlayersOpen, setIsPlayersOpen] = useState(false);
   const [isBusy, setIsBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const selectedPlayer = useMemo(
@@ -70,6 +89,7 @@ export function SessionGate() {
   );
   const needsPlayer = Boolean(session && !selectedPlayer);
   const normalizedSessionCodeInput = normalizeSharedSessionCode(sessionCodeInput);
+  const historyRoute = historyRouteFor(pathname);
 
   useEffect(() => {
     const importedCode = importedSessionCodeFromUrl();
@@ -204,6 +224,10 @@ export function SessionGate() {
       const playerExists = loadedSession.players.some((player) => player.id === storedPlayerId);
       const nextPlayerId = playerExists ? storedPlayerId : null;
 
+      if (session?.code !== loadedSession.code) {
+        await hydrateSharedActiveGame(null);
+      }
+
       setSession(loadedSession);
       setSelectedPlayerId(nextPlayerId);
       writeStoredSessionCode(loadedSession.code);
@@ -231,6 +255,10 @@ export function SessionGate() {
 
     try {
       const createdSession = await createSharedSession();
+
+      if (session?.code !== createdSession.code) {
+        await hydrateSharedActiveGame(null);
+      }
 
       writeStoredSessionCode(createdSession.code);
       setSession(createdSession);
@@ -282,7 +310,10 @@ export function SessionGate() {
     }
   }
 
-  function leaveSession() {
+  async function leaveSession() {
+    setIsBusy(true);
+    setError(null);
+
     if (session) {
       clearStoredSessionPlayerId(session.code);
     }
@@ -292,23 +323,97 @@ export function SessionGate() {
     setSelectedPlayerId(null);
     setSessionCodeInput("");
     setSharedSessionContext({ code: null, playerId: null, deviceId, players: [] });
-    void hydrateSharedActiveGame(null);
+
+    try {
+      await hydrateSharedActiveGame(null);
+    } catch {
+      setError(sessionCopy("loadFailed"));
+    } finally {
+      setIsBusy(false);
+    }
   }
 
   if (session && selectedPlayer) {
     return (
-      <div className="pointer-events-none fixed right-4 top-3 z-40 hidden max-w-xs md:block">
-        <Card className="pointer-events-auto gap-0 border-secondary/30 bg-card/90 py-0 shadow-xl shadow-primary/10 backdrop-blur">
-          <CardContent className="flex items-center gap-3 p-2 text-xs">
-            <div className="min-w-0 flex-1">
-              <p className="truncate font-semibold">{sessionCopy("active", { code: session.code })}</p>
-              <p className="truncate text-muted-foreground">{sessionCopy("selectedPlayer", { player: selectedPlayer.name })}</p>
-            </div>
-            <Button type="button" size="sm" variant="outline" onClick={leaveSession}>
-              {sessionCopy("change")}
+      <div className="fixed right-3 top-[calc(0.75rem+env(safe-area-inset-top))] z-40 max-w-[calc(100vw-1.5rem)] md:right-4 md:top-3">
+        <Dialog open={isPlayersOpen} onOpenChange={setIsPlayersOpen}>
+          <DialogTrigger asChild>
+            <Button type="button" size="sm" variant="secondary" className="min-h-10 rounded-2xl border border-secondary/30 bg-card/95 shadow-xl shadow-primary/10 backdrop-blur" data-testid="session-players-button">
+              <Users className="size-4" aria-hidden="true" />
+              {sessionCopy("playersButton")}
+              <span className="hidden max-w-28 truncate text-muted-foreground sm:inline">{selectedPlayer.name}</span>
             </Button>
-          </CardContent>
-        </Card>
+          </DialogTrigger>
+          <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-2xl">
+            <DialogHeader className="pr-10 text-left">
+              <DialogTitle className="flex items-center gap-2 text-2xl tracking-tight">
+                <Users className="size-5 text-primary" aria-hidden="true" />
+                {sessionCopy("playersTitle")}
+              </DialogTitle>
+              <DialogDescription>
+                {sessionCopy("playersDescription", { code: session.code })}
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="grid gap-4">
+              <div className="grid gap-2 rounded-2xl border border-primary/20 bg-background/65 p-3">
+                <p className="text-xs font-bold uppercase tracking-[0.16em] text-primary">{sessionCopy("sessionPlayers")}</p>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {session.players.map((player) => {
+                    const isSelected = player.id === selectedPlayerId;
+
+                    return (
+                      <Button
+                        key={player.id}
+                        type="button"
+                        variant={isSelected ? "default" : "outline"}
+                        className="min-h-12 justify-start rounded-xl"
+                        data-testid={`session-player-${player.id}`}
+                        onClick={() => selectPlayer(player.id)}
+                      >
+                        <UserRound className="size-4" aria-hidden="true" />
+                        <span className="min-w-0 flex-1 truncate text-left">{player.name}</span>
+                        {isSelected ? <span className="text-xs opacity-80">{sessionCopy("youBadge")}</span> : null}
+                      </Button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="grid gap-2 rounded-2xl border border-border/70 bg-background/65 p-3 sm:grid-cols-[1fr_auto]">
+                <Input
+                  value={playerNameInput}
+                  className="min-h-11"
+                  placeholder={sessionCopy("playerNamePlaceholder")}
+                  aria-label={sessionCopy("playerNameLabel")}
+                  onChange={(event) => setPlayerNameInput(event.target.value)}
+                />
+                <Button type="button" size="sm" variant="secondary" disabled={isBusy || playerNameInput.trim().length === 0} onClick={() => { void addPlayer(); }}>
+                  <Plus aria-hidden="true" />
+                  {sessionCopy("addPlayer")}
+                </Button>
+              </div>
+
+              <p className="rounded-2xl border border-border/70 bg-card/80 px-4 py-3 text-xs leading-5 text-muted-foreground">
+                {sessionCopy("playerStatsHint")}
+              </p>
+
+              {error ? <p className="text-sm font-medium text-destructive">{error}</p> : null}
+            </div>
+
+            <DialogFooter className="grid gap-2 sm:grid-cols-[1fr_auto_auto] sm:items-center">
+              <Button asChild type="button" variant="outline" size="sm" className="justify-center rounded-xl">
+                <Link href={historyRoute} onClick={() => setIsPlayersOpen(false)}>
+                  <BarChart3 className="size-4" aria-hidden="true" />
+                  {sessionCopy("stats")}
+                </Link>
+              </Button>
+              <Button type="button" size="sm" variant="outline" className="rounded-xl" disabled={isBusy} onClick={() => { void leaveSession(); }}>
+                {sessionCopy("change")}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     );
   }
@@ -388,7 +493,7 @@ export function SessionGate() {
                 <Plus aria-hidden="true" />
                 {sessionCopy("addPlayer")}
               </Button>
-              <Button type="button" size="sm" variant="outline" onClick={leaveSession}>
+              <Button type="button" size="sm" variant="outline" disabled={isBusy} onClick={() => { void leaveSession(); }}>
                 {sessionCopy("change")}
               </Button>
             </div>

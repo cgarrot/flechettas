@@ -600,23 +600,44 @@ export const useGameStore = create<GameStoreState>()((set, get) => ({
   },
 
   setSharedSessionContext(context) {
-    const previousCode = get().sharedSessionCode;
+    const currentState = get();
+    const previousCode = currentState.sharedSessionCode;
+    const isSessionSwitch = context.code !== previousCode;
 
     set({
+      ...(isSessionSwitch ? emptySnapshot() : {}),
       sharedSessionCode: context.code,
       sharedSessionPlayerId: context.playerId,
       sharedSessionDeviceId: context.deviceId,
       sharedSessionPlayers: context.players,
-      sharedRevision: context.code && context.code === previousCode ? get().sharedRevision : 0,
+      sharedRevision: context.code && context.code === previousCode ? currentState.sharedRevision : 0,
       sharedSyncError: null,
     });
   },
 
   async hydrateSharedActiveGame(activeGame) {
     if (activeGame === null) {
-      set({ sharedRevision: 0, sharedSyncError: null });
+      const clearedSessionCode = get().sharedSessionCode;
+
+      await clearActiveGame();
+
+      if (get().sharedSessionCode !== clearedSessionCode) {
+        return get().gameState;
+      }
+
+      set({
+        ...emptySnapshot(),
+        sharedRevision: 0,
+        sharedSyncError: null,
+      });
 
       return null;
+    }
+
+    const activeGameSessionCode = activeGame.sessionCode;
+
+    if (get().sharedSessionCode !== activeGameSessionCode) {
+      return get().gameState;
     }
 
     const snapshot = activeGame.snapshot;
@@ -625,6 +646,10 @@ export const useGameStore = create<GameStoreState>()((set, get) => ({
       await saveActiveGame(snapshot.gameState, snapshot.eventLog);
     } else {
       await clearActiveGame();
+    }
+
+    if (get().sharedSessionCode !== activeGameSessionCode) {
+      return get().gameState;
     }
 
     set({
@@ -646,8 +671,17 @@ export const useGameStore = create<GameStoreState>()((set, get) => ({
     try {
       const activeGame = await fetchSharedActiveGame(sharedSessionCode);
 
+      if (get().sharedSessionCode !== sharedSessionCode) {
+        return get().gameState;
+      }
+
       if (activeGame === null) {
         await clearActiveGame();
+
+        if (get().sharedSessionCode !== sharedSessionCode) {
+          return get().gameState;
+        }
+
         set({
           ...emptySnapshot(),
           sharedRevision: 0,

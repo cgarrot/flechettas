@@ -10,7 +10,7 @@ import { dartScore } from "@/engine";
 import { cn } from "@/lib/utils";
 import { useGameStore } from "@/store";
 
-import type { BullSegment, Dart, Multiplier, NumberSegment } from "@/types";
+import type { BullSegment, Dart, DartIndex, Multiplier, NumberSegment } from "@/types";
 
 const NUMBER_SEGMENTS = [
   1, 2, 3, 4, 5,
@@ -34,6 +34,8 @@ type SelectedTarget = NumberSegment | BullSegment | null;
 
 type ScoringInputProps = Readonly<{
   className?: string;
+  editingDartIndex?: DartIndex | null;
+  onEditComplete?: () => void;
 }>;
 
 function createTargetDart(target: SelectedTarget, multiplier: Multiplier): Dart | null {
@@ -52,10 +54,11 @@ function createTargetDart(target: SelectedTarget, multiplier: Multiplier): Dart 
   return { segment: target, multiplier };
 }
 
-export function ScoringInput({ className }: ScoringInputProps) {
+export function ScoringInput({ className, editingDartIndex = null, onEditComplete }: ScoringInputProps) {
   const scoring = useTranslations("Scoring");
   const gameState = useGameStore((state) => state.gameState);
   const throwDart = useGameStore((state) => state.throwDart);
+  const replaceCurrentTurnDart = useGameStore((state) => state.replaceCurrentTurnDart);
   const undo = useGameStore((state) => state.undo);
   const hasDartEvents = useGameStore((state) => state.eventLog.some((event) => event.type === "dart_thrown"));
   const [selectedMultiplier, setSelectedMultiplier] = useState<Multiplier>(1);
@@ -80,7 +83,13 @@ export function ScoringInput({ className }: ScoringInputProps) {
     setIsSubmitting(true);
 
     try {
-      await throwDart(dart);
+      if (editingDartIndex === null) {
+        await throwDart(dart);
+      } else {
+        await replaceCurrentTurnDart(editingDartIndex, dart);
+        onEditComplete?.();
+      }
+
       setSelectedMultiplier(1);
     } finally {
       setIsSubmitting(false);
@@ -162,6 +171,7 @@ export function ScoringInput({ className }: ScoringInputProps) {
               segment,
               score: value,
             });
+            const computedScoreLabel = selectedMultiplier === 1 ? null : String(value);
 
             return (
               <Button
@@ -179,14 +189,15 @@ export function ScoringInput({ className }: ScoringInputProps) {
                 onClick={() => scoreTarget(segment)}
               >
                 <span>{segment}</span>
-                <span className={cn(
-                  "text-[0.58rem] font-black leading-none tracking-[0.12em]",
-                  selectedMultiplier === 1 && "text-muted-foreground/45",
-                  selectedMultiplier === 2 && "text-secondary",
-                  selectedMultiplier === 3 && "text-accent",
-                )}>
-                  {scoreFormula}
-                </span>
+                {computedScoreLabel ? (
+                  <span className={cn(
+                    "text-[0.65rem] font-black leading-none tracking-[0.12em]",
+                    selectedMultiplier === 2 && "text-secondary",
+                    selectedMultiplier === 3 && "text-accent",
+                  )}>
+                    {computedScoreLabel}
+                  </span>
+                ) : null}
               </Button>
             );
           })}

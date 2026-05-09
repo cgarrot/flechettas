@@ -20,6 +20,7 @@ import { cn } from "@/lib/utils";
 import { useGameStore } from "@/store";
 
 import type { BotLevel, PlayerState } from "@/types";
+import type { DartIndex } from "@/types";
 
 type Locale = "fr" | "en";
 
@@ -120,6 +121,7 @@ export function GameScreen({ locale }: GameScreenProps) {
   const sharedSessionCode = useGameStore((state) => state.sharedSessionCode);
   const [hasCheckedResume, setHasCheckedResume] = useState(false);
   const [botPlayback, setBotPlayback] = useState<BotPlaybackState | null>(null);
+  const [editingDartIndex, setEditingDartIndex] = useState<DartIndex | null>(null);
   const activeBotTurnKey = useRef<string | null>(null);
   const activePlayer = useMemo(
     () => gameState?.players.find((player) => player.id === gameState.activePlayerId),
@@ -184,6 +186,12 @@ export function GameScreen({ locale }: GameScreenProps) {
       document.removeEventListener("visibilitychange", refreshWhenVisible);
     };
   }, [hasCheckedResume, refreshSharedActiveGame, sharedSessionCode]);
+
+  useEffect(() => {
+    if (editingDartIndex !== null && (!activePlayer || activePlayer.isBot || editingDartIndex >= activePlayer.currentTurn.length)) {
+      setEditingDartIndex(null);
+    }
+  }, [activePlayer, editingDartIndex]);
 
   useEffect(() => {
     const currentState = useGameStore.getState().gameState;
@@ -300,13 +308,21 @@ export function GameScreen({ locale }: GameScreenProps) {
 
             <section className="grid min-h-0 flex-1 gap-1.5 lg:grid-cols-[0.82fr_1.18fr] lg:items-start lg:gap-3" aria-label={game("gameBoardLabel")}>
               <div className="space-y-2 sm:space-y-4">
-                <TurnIndicator botPlayback={botPlayback} />
+                <TurnIndicator
+                  botPlayback={botPlayback}
+                  selectedEditIndex={editingDartIndex}
+                  onSelectEditIndex={(dartIndex) => setEditingDartIndex((currentIndex) => (currentIndex === dartIndex ? null : dartIndex))}
+                />
                 <CheckoutSuggestions className="hidden sm:block" />
               </div>
 
               <div className="space-y-2 sm:space-y-4">
                 <div className="relative">
-                  <ScoringInput className={cn(isBotTurn && "pointer-events-none opacity-60")} />
+                  <ScoringInput
+                    className={cn(isBotTurn && "pointer-events-none opacity-60")}
+                    editingDartIndex={editingDartIndex}
+                    onEditComplete={() => setEditingDartIndex(null)}
+                  />
                   {isBotTurn ? (
                     <div className="absolute inset-0 grid place-items-center rounded-2xl bg-background/65 p-4 backdrop-blur-sm" aria-live="polite">
                       <Card className="border-primary/20 bg-card/95 py-5 shadow-xl shadow-primary/15">

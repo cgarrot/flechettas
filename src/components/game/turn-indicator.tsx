@@ -4,12 +4,13 @@ import { Bot, CircleDot, UserRound } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { dartScore, formatDart } from "@/engine";
 import { cn } from "@/lib/utils";
 import { useGameStore } from "@/store";
 
-import type { Dart, PlayerId } from "@/types";
+import type { Dart, DartIndex, PlayerId } from "@/types";
 
 export type BotPlaybackState = Readonly<{
   playerId: PlayerId;
@@ -21,13 +22,22 @@ export type BotPlaybackState = Readonly<{
 type TurnIndicatorProps = Readonly<{
   botPlayback?: BotPlaybackState | null;
   className?: string;
+  selectedEditIndex?: DartIndex | null;
+  onSelectEditIndex?: (dartIndex: DartIndex) => void;
 }>;
+
+const DART_SLOT_INDEXES = [0, 1, 2] as const satisfies readonly DartIndex[];
 
 function nextDartNumber(currentTurnLength: number): number {
   return Math.min(3, currentTurnLength + 1);
 }
 
-export function TurnIndicator({ botPlayback, className }: TurnIndicatorProps) {
+export function TurnIndicator({
+  botPlayback,
+  className,
+  selectedEditIndex = null,
+  onSelectEditIndex,
+}: TurnIndicatorProps) {
   const game = useTranslations("Game");
   const scoring = useTranslations("Scoring");
   const gameState = useGameStore((state) => state.gameState);
@@ -38,9 +48,6 @@ export function TurnIndicator({ botPlayback, className }: TurnIndicatorProps) {
   const isBotTurn = Boolean(activePlayer?.isBot);
   const isCurrentBotPlayback = isBotTurn && botPlayback?.playerId === activePlayer?.id;
   const currentBotPlayback = isCurrentBotPlayback && botPlayback ? botPlayback : null;
-  const currentTurnLabel = currentTurn.length > 0
-    ? currentTurn.map(formatDart).join(" · ")
-    : scoring("noDarts");
 
   if (!gameState || !activePlayer) {
     return (
@@ -59,9 +66,6 @@ export function TurnIndicator({ botPlayback, className }: TurnIndicatorProps) {
           <div className="min-w-0">
             <p className="text-[0.68rem] font-bold uppercase tracking-[0.16em] text-primary sm:text-xs">{game("turnKicker")}</p>
             <p className="truncate text-lg font-black tracking-tight sm:text-2xl">{activePlayer.name}</p>
-            <p className="truncate text-xs text-muted-foreground sm:text-sm">
-              <span className="font-semibold text-foreground">{scoring("currentDarts")}:</span> {currentTurnLabel}
-            </p>
           </div>
           <div className="grid justify-items-end gap-1">
             <Badge variant={isBotTurn ? "secondary" : "default"} className="text-[0.65rem] sm:text-xs">
@@ -73,32 +77,55 @@ export function TurnIndicator({ botPlayback, className }: TurnIndicatorProps) {
             </p>
           </div>
           <div className="col-span-2 grid grid-cols-3 gap-1.5">
-            {[0, 1, 2].map((index) => (
-              <div
-                key={index}
-                className={cn(
-                  "rounded-xl border border-border/70 bg-muted/55 px-2 py-1.5 text-center text-muted-foreground",
-                  index < currentTurnLength && "border-primary/50 bg-primary/15 text-foreground shadow-lg shadow-primary/10",
-                  index + 1 === dartNumber && currentTurnLength < 3 && "border-accent/60 bg-accent/10 text-foreground shadow-lg shadow-accent/10",
-                )}
-              >
-                <span className="block text-[0.58rem] font-bold uppercase tracking-[0.12em] text-muted-foreground">
-                  {scoring("dartSlotLabel", { number: index + 1 })}
-                </span>
-                {currentTurn[index] ? (
-                  <>
-                    <span className="block font-mono text-base font-black leading-tight sm:text-lg">{formatDart(currentTurn[index])}</span>
-                    <span className="block text-[0.65rem] font-semibold text-primary">
-                      {scoring("dartSlotScore", { score: dartScore(currentTurn[index]) })}
-                    </span>
-                  </>
-                ) : (
-                  <span className="block py-1 font-mono text-sm font-black leading-tight text-muted-foreground/70 sm:text-base">
-                    {scoring("dartSlotEmpty")}
+            {DART_SLOT_INDEXES.map((index) => {
+              const dart = currentTurn[index];
+              const isEditable = Boolean(dart && onSelectEditIndex && !isBotTurn);
+              const isSelected = selectedEditIndex === index;
+              const slotClassName = cn(
+                "rounded-xl border border-border/70 bg-muted/55 px-2 py-1.5 text-center text-muted-foreground transition-[border-color,background-color,box-shadow,transform]",
+                index < currentTurnLength && "border-primary/50 bg-primary/15 text-foreground shadow-lg shadow-primary/10",
+                index + 1 === dartNumber && currentTurnLength < 3 && "border-accent/60 bg-accent/10 text-foreground shadow-lg shadow-accent/10",
+                isEditable && "cursor-pointer hover:-translate-y-0.5 hover:border-primary hover:bg-primary/20",
+                isSelected && "border-secondary bg-secondary/20 shadow-secondary/20",
+              );
+              const content = (
+                <>
+                  <span className="block text-[0.58rem] font-bold uppercase tracking-[0.12em] text-muted-foreground">
+                    {scoring("dartSlotLabel", { number: index + 1 })}
                   </span>
-                )}
-              </div>
-            ))}
+                  {dart ? (
+                    <>
+                      <span className="block font-mono text-base font-black leading-tight sm:text-lg">{formatDart(dart)}</span>
+                      <span className="block text-[0.65rem] font-semibold text-primary">
+                        {scoring("dartSlotScore", { score: dartScore(dart) })}
+                      </span>
+                    </>
+                  ) : (
+                    <span className="block py-1 font-mono text-sm font-black leading-tight text-muted-foreground/70 sm:text-base">
+                      {scoring("dartSlotEmpty")}
+                    </span>
+                  )}
+                </>
+              );
+
+              return isEditable ? (
+                <Button
+                  key={index}
+                  type="button"
+                  variant="ghost"
+                  className={cn("h-auto whitespace-normal", slotClassName)}
+                  aria-pressed={isSelected}
+                  aria-label={scoring("editDartSlot", { number: index + 1 })}
+                  onClick={() => onSelectEditIndex?.(index)}
+                >
+                  <span>{content}</span>
+                </Button>
+              ) : (
+                <div key={index} className={slotClassName}>
+                  {content}
+                </div>
+              );
+            })}
           </div>
         </div>
 

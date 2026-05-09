@@ -2,11 +2,10 @@
 
 import { ArrowLeft, Target } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useRouter } from "next/navigation";
 import { useMemo } from "react";
 
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { LeaveGameButton } from "@/components/game/leave-game-button";
 import {
   Card,
   CardDescription,
@@ -39,10 +38,6 @@ const killerAssignmentMessageKeys = {
   random: "assignmentRandom",
   sequential: "assignmentSequential",
 } as const satisfies Record<KillerAssignment, string>;
-
-function homeRouteFor(locale: Locale): string {
-  return `/${locale}`;
-}
 
 function formatMatchValue(config: GameConfig, label: (key: string) => string): string[] {
   const legsToWin = config.matchFormat?.legsToWin ?? 1;
@@ -111,7 +106,6 @@ function modeLabelKey(mode: GameMode): string {
 }
 
 export function GameHeader({ locale, gameState }: GameHeaderProps) {
-  const router = useRouter();
   const game = useTranslations("Game");
   const gameConfig = useTranslations("GameConfig");
   const misc = useTranslations("Misc");
@@ -129,23 +123,17 @@ export function GameHeader({ locale, gameState }: GameHeaderProps) {
     );
   }, [gameConfig, gameState, game, misc]);
 
-  function handleBackToHome() {
-    router.push(homeRouteFor(locale));
-  }
-
   return (
     <header className="grid gap-3 rounded-[1.5rem] border border-primary/20 bg-card/85 p-3 shadow-xl shadow-primary/10 backdrop-blur sm:p-5 lg:grid-cols-[auto_1fr] lg:items-center">
-        <Button
-          type="button"
-          variant="outline"
+        <LeaveGameButton
+          locale={locale}
           size="lg"
           className="min-h-10 justify-start rounded-xl border-primary/25 sm:min-h-12"
-          data-testid="back-to-home"
-          onClick={handleBackToHome}
+          ariaLabel={game("backToHome")}
         >
           <ArrowLeft aria-hidden="true" />
           {game("backToHome")}
-        </Button>
+        </LeaveGameButton>
 
         <Card className="border-primary/15 bg-background/60 py-3 shadow-inner shadow-primary/5 sm:py-4">
           <CardHeader className="gap-2 px-3 sm:gap-3 sm:px-5">

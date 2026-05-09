@@ -1,6 +1,6 @@
 "use client";
 
-import { BarChart3, Link2, Plus, Trash2, UserRound, Users } from "lucide-react";
+import { BarChart3, Link2, Plus, Settings, Trash2, UserRound } from "lucide-react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { usePathname } from "next/navigation";
@@ -18,6 +18,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { LanguageSwitcher } from "@/components/ui/language-switcher";
 import {
   Select,
   SelectContent,
@@ -46,9 +47,14 @@ import { cn } from "@/lib/utils";
 import { useGameStore } from "@/store";
 
 import type { PlayerId, SharedSessionPlayer, SharedSessionSummary } from "@/types";
+import type { Locale } from "@/i18n/routing";
 
 const SESSION_PLAYERS_POLL_MS = 15_000;
 type ShareStatus = "idle" | "copied" | "failed";
+
+type SessionGateProps = Readonly<{
+  locale: Locale;
+}>;
 
 function importedSessionCodeFromUrl(): string | null {
   const url = new URL(window.location.href);
@@ -80,7 +86,7 @@ function sessionShareUrl(code: string): string {
   return url.toString();
 }
 
-export function SessionGate() {
+export function SessionGate({ locale }: SessionGateProps) {
   const pathname = usePathname();
   const sessionCopy = useTranslations("Session");
   const setSharedSessionContext = useGameStore((state) => state.setSharedSessionContext);
@@ -432,36 +438,47 @@ export function SessionGate() {
 
   if (session && selectedPlayer) {
     return (
-      <div className="fixed right-3 top-[calc(0.75rem+env(safe-area-inset-top))] z-40 max-w-[calc(100vw-1.5rem)] md:right-4 md:top-3">
-        <Dialog
-          open={isPlayersOpen}
-          onOpenChange={(open) => {
-            setIsPlayersOpen(open);
+      <Dialog
+        open={isPlayersOpen}
+        onOpenChange={(open) => {
+          setIsPlayersOpen(open);
 
-            if (!open) {
-              setShareStatus("idle");
-            }
-          }}
-        >
-          <DialogTrigger asChild>
-            <Button type="button" size="sm" variant="secondary" className="min-h-10 rounded-2xl border border-secondary/30 bg-card/95 shadow-xl shadow-primary/10 backdrop-blur" data-testid="session-players-button">
-              <Users className="size-4" aria-hidden="true" />
-              {sessionCopy("playersButton")}
-              <span className="hidden max-w-28 truncate text-muted-foreground sm:inline">{selectedPlayer.name}</span>
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-2xl">
-            <DialogHeader className="pr-10 text-left">
-              <DialogTitle className="flex items-center gap-2 text-2xl tracking-tight">
-                <Users className="size-5 text-primary" aria-hidden="true" />
-                {sessionCopy("playersTitle")}
-              </DialogTitle>
-              <DialogDescription>
-                {sessionCopy("playersDescription", { code: session.code })}
-              </DialogDescription>
-            </DialogHeader>
+          if (!open) {
+            setShareStatus("idle");
+          }
+        }}
+      >
+        <DialogTrigger asChild>
+          <Button
+            type="button"
+            size="lg"
+            variant="outline"
+            className="min-h-11 min-w-11 rounded-xl border-secondary/30 px-3 shadow-primary/10"
+            data-testid="session-settings-button"
+            aria-label={sessionCopy("settingsButton")}
+            title={sessionCopy("settingsButton")}
+          >
+            <Settings className="size-4" aria-hidden="true" />
+            <span className="hidden max-w-28 truncate text-muted-foreground lg:inline">{selectedPlayer.name}</span>
+          </Button>
+        </DialogTrigger>
+        <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-2xl">
+          <DialogHeader className="pr-10 text-left">
+            <DialogTitle className="flex items-center gap-2 text-2xl tracking-tight">
+              <Settings className="size-5 text-primary" aria-hidden="true" />
+              {sessionCopy("playersTitle")}
+            </DialogTitle>
+            <DialogDescription>
+              {sessionCopy("playersDescription", { code: session.code })}
+            </DialogDescription>
+          </DialogHeader>
 
-            <div className="grid gap-4">
+          <div className="grid gap-4">
+              <div className="grid gap-2 rounded-2xl border border-primary/20 bg-background/65 p-3 sm:grid-cols-[auto_1fr] sm:items-center">
+                <p className="text-xs font-bold uppercase tracking-[0.16em] text-primary">{sessionCopy("languageTitle")}</p>
+                <LanguageSwitcher locale={locale} className="justify-self-start" />
+              </div>
+
               <div className="grid gap-3 rounded-2xl border border-secondary/25 bg-card/80 p-3 sm:grid-cols-[1fr_auto] sm:items-center">
                 <div className="min-w-0 space-y-1">
                   <p className="text-sm font-bold">{sessionCopy("shareTitle", { code: session.code })}</p>
@@ -541,22 +558,21 @@ export function SessionGate() {
               </p>
 
               {error ? <p className="text-sm font-medium text-destructive">{error}</p> : null}
-            </div>
+          </div>
 
-            <DialogFooter className="grid gap-2 sm:grid-cols-[1fr_auto_auto] sm:items-center">
-              <Button asChild type="button" variant="outline" size="sm" className="justify-center rounded-xl">
-                <Link href={historyRoute} onClick={() => setIsPlayersOpen(false)}>
-                  <BarChart3 className="size-4" aria-hidden="true" />
-                  {sessionCopy("stats")}
-                </Link>
-              </Button>
-              <Button type="button" size="sm" variant="outline" className="rounded-xl" disabled={isBusy} onClick={() => { void leaveSession(); }}>
-                {sessionCopy("change")}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      </div>
+          <DialogFooter className="grid gap-2 sm:grid-cols-[1fr_auto_auto] sm:items-center">
+            <Button asChild type="button" variant="outline" size="sm" className="justify-center rounded-xl">
+              <Link href={historyRoute} onClick={() => setIsPlayersOpen(false)}>
+                <BarChart3 className="size-4" aria-hidden="true" />
+                {sessionCopy("stats")}
+              </Link>
+            </Button>
+            <Button type="button" size="sm" variant="outline" className="rounded-xl" disabled={isBusy} onClick={() => { void leaveSession(); }}>
+              {sessionCopy("change")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     );
   }
 

@@ -6,6 +6,8 @@ import { useTranslations } from "next-intl";
 import { usePathname } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
+import { LeaveGameButton } from "@/components/game/leave-game-button";
+import { SessionGate } from "@/components/session/session-gate";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { cn } from "@/lib/utils";
 
@@ -64,12 +66,19 @@ export function AppHeader({ locale }: AppHeaderProps) {
       <div className={cn("mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-2 px-4 py-3 sm:gap-3 sm:px-6 lg:px-8", isScoring && "px-2 py-1 sm:px-6 sm:py-3")}>
         <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
           {showBackButton ? (
-            <Button asChild variant="outline" size="lg" className="min-h-11 min-w-11 rounded-xl px-3 sm:px-4">
-              <Link href={parentRouteFor(pathname, locale)} aria-label={navigation("back")}>
+            isScoring ? (
+              <LeaveGameButton locale={locale} size="lg" className="min-h-11 min-w-11 rounded-xl px-3 sm:px-4" ariaLabel={navigation("back")}>
                 <ArrowLeft aria-hidden="true" />
                 <span className="hidden sm:inline">{navigation("back")}</span>
-              </Link>
-            </Button>
+              </LeaveGameButton>
+            ) : (
+              <Button asChild variant="outline" size="lg" className="min-h-11 min-w-11 rounded-xl px-3 sm:px-4">
+                <Link href={parentRouteFor(pathname, locale)} aria-label={navigation("back")}>
+                  <ArrowLeft aria-hidden="true" />
+                  <span className="hidden sm:inline">{navigation("back")}</span>
+                </Link>
+              </Button>
+            )
           ) : null}
 
             <Link
@@ -84,7 +93,8 @@ export function AppHeader({ locale }: AppHeaderProps) {
           </Link>
         </div>
 
-        <div className={cn("flex shrink-0 items-center gap-2", isScoring && "hidden sm:flex")}>
+        <div className={cn("flex shrink-0 items-center gap-2", isScoring && "gap-1.5 sm:gap-2")}>
+          <SessionGate locale={locale} />
           <ThemeToggle />
         </div>
       </div>

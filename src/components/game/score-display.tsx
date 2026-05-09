@@ -1,6 +1,6 @@
 "use client";
 
-import { Activity, Crown, Target } from "lucide-react";
+import { Activity, Crown } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { Badge } from "@/components/ui/badge";
@@ -10,7 +10,6 @@ import {
   CardDescription,
   CardTitle,
 } from "@/components/ui/card";
-import { formatDart } from "@/engine";
 import { cn } from "@/lib/utils";
 import { useGameStore } from "@/store";
 
@@ -65,14 +64,6 @@ function secondaryMetricFor(player: PlayerState, label: (key: string) => string)
     case "killer":
       return { label: label("kills"), value: String(player.modeState.kills) };
   }
-}
-
-function formattedTurn(player: PlayerState, emptyLabel: string): string {
-  if (player.currentTurn.length === 0) {
-    return emptyLabel;
-  }
-
-  return player.currentTurn.map(formatDart).join(" · ");
 }
 
 function isPlayerState(player: PlayerState | undefined): player is PlayerState {
@@ -200,12 +191,11 @@ export function ScoreDisplay({ className }: ScoreDisplayProps) {
                   <p className="font-mono text-base font-black sm:text-xl">{activeSecondaryMetric.value}</p>
                 </div>
                 <div className="rounded-xl border border-border/70 bg-background/70 px-2 py-1.5 sm:rounded-2xl sm:px-3 sm:py-2">
-                  <p className="flex items-center gap-1 truncate text-[0.62rem] text-muted-foreground sm:text-xs">
-                    <Target className="size-3" aria-hidden="true" />
-                    {scoring("currentDarts")}
+                  <p className="truncate text-[0.62rem] text-muted-foreground sm:text-xs">
+                    {scoring("legSetCounter", { leg: gameState.currentLeg, set: gameState.currentSet })}
                   </p>
-                  <p className="truncate font-mono text-base font-black sm:text-xl" data-testid={`darts-player-${activePlayerIndex + 1}`}>
-                    {formattedTurn(activePlayer, scoring("noDarts"))}
+                  <p className="font-mono text-base font-black sm:text-xl">
+                    {scoring("round")} {gameState.currentRound}
                   </p>
                 </div>
               </div>

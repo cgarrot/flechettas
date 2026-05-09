@@ -29,7 +29,7 @@ type GameScreenProps = Readonly<{
 
 const BOT_THINKING_DELAY_MS = 800;
 const BOT_DART_DELAY_MS = 400;
-const SHARED_GAME_POLL_MS = 2000;
+const SHARED_GAME_POLL_MS = 7_000;
 const DEFAULT_BOT_LEVEL = 1 satisfies BotLevel;
 
 function newGameRouteFor(locale: Locale): string {
@@ -164,17 +164,24 @@ export function GameScreen({ locale }: GameScreenProps) {
 
     let isCancelled = false;
 
-    void refreshSharedActiveGame();
-
-    const intervalId = window.setInterval(() => {
-      if (!isCancelled) {
+    function refreshWhenVisible() {
+      if (!isCancelled && document.visibilityState === "visible") {
         void refreshSharedActiveGame();
       }
+    }
+
+    refreshWhenVisible();
+
+    const intervalId = window.setInterval(() => {
+      refreshWhenVisible();
     }, SHARED_GAME_POLL_MS);
+
+    document.addEventListener("visibilitychange", refreshWhenVisible);
 
     return () => {
       isCancelled = true;
       window.clearInterval(intervalId);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
     };
   }, [hasCheckedResume, refreshSharedActiveGame, sharedSessionCode]);
 
@@ -274,8 +281,8 @@ export function GameScreen({ locale }: GameScreenProps) {
   const isBotTurn = Boolean(activePlayer?.isBot && gameState?.phase === "playing");
 
   return (
-    <main className="min-h-screen -mb-[calc(7rem+env(safe-area-inset-bottom))] overflow-hidden bg-transparent px-2 py-2 pb-[calc(1rem+env(safe-area-inset-bottom))] text-foreground sm:px-6 sm:py-6 md:mb-0 md:pb-0 lg:px-8">
-      <section className="relative mx-auto flex max-w-7xl flex-col gap-2 sm:gap-6">
+    <main className="min-h-[calc(100dvh-4rem)] overflow-x-hidden bg-transparent px-2 pt-1 pb-[calc(1rem+env(safe-area-inset-bottom))] text-foreground sm:px-6 sm:py-6 md:pb-0 lg:px-8">
+      <section className="relative mx-auto flex max-w-7xl flex-col gap-1.5 sm:gap-6">
         <div className="pointer-events-none absolute -top-28 right-4 -z-10 size-72 rounded-full bg-chart-2/25 blur-3xl" aria-hidden="true" />
         <div className="pointer-events-none absolute top-96 -left-24 -z-10 size-80 rounded-full bg-chart-1/20 blur-3xl" aria-hidden="true" />
 
@@ -291,7 +298,7 @@ export function GameScreen({ locale }: GameScreenProps) {
           <>
             <ScoreDisplay />
 
-            <section className="grid gap-2 lg:grid-cols-[0.82fr_1.18fr] lg:items-start lg:gap-3" aria-label={game("gameBoardLabel")}>
+            <section className="grid gap-1.5 lg:grid-cols-[0.82fr_1.18fr] lg:items-start lg:gap-3" aria-label={game("gameBoardLabel")}>
               <div className="space-y-2 sm:space-y-4">
                 <TurnIndicator botPlayback={botPlayback} />
                 <CheckoutSuggestions className="hidden sm:block" />

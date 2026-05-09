@@ -29,13 +29,18 @@ function nextDartNumber(currentTurnLength: number): number {
 
 export function TurnIndicator({ botPlayback, className }: TurnIndicatorProps) {
   const game = useTranslations("Game");
+  const scoring = useTranslations("Scoring");
   const gameState = useGameStore((state) => state.gameState);
   const activePlayer = gameState?.players.find((player) => player.id === gameState.activePlayerId);
-  const currentTurnLength = activePlayer?.currentTurn.length ?? gameState?.currentTurn.length ?? 0;
+  const currentTurn = activePlayer?.currentTurn ?? gameState?.currentTurn ?? [];
+  const currentTurnLength = currentTurn.length;
   const dartNumber = nextDartNumber(currentTurnLength);
   const isBotTurn = Boolean(activePlayer?.isBot);
   const isCurrentBotPlayback = isBotTurn && botPlayback?.playerId === activePlayer?.id;
   const currentBotPlayback = isCurrentBotPlayback && botPlayback ? botPlayback : null;
+  const currentTurnLabel = currentTurn.length > 0
+    ? currentTurn.map(formatDart).join(" · ")
+    : scoring("noDarts");
 
   if (!gameState || !activePlayer) {
     return (
@@ -54,6 +59,9 @@ export function TurnIndicator({ botPlayback, className }: TurnIndicatorProps) {
           <div className="min-w-0">
             <p className="text-[0.68rem] font-bold uppercase tracking-[0.16em] text-primary sm:text-xs">{game("turnKicker")}</p>
             <p className="truncate text-lg font-black tracking-tight sm:text-2xl">{activePlayer.name}</p>
+            <p className="truncate text-xs text-muted-foreground sm:text-sm">
+              <span className="font-semibold text-foreground">{scoring("currentDarts")}:</span> {currentTurnLabel}
+            </p>
           </div>
           <div className="grid justify-items-end gap-1">
             <Badge variant={isBotTurn ? "secondary" : "default"} className="text-[0.65rem] sm:text-xs">

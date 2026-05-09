@@ -1,12 +1,12 @@
 "use client";
 
-import { Crosshair, Loader2, Target, Undo2 } from "lucide-react";
+import { Crosshair, Target, Undo2 } from "lucide-react";
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { dartScore, formatDart } from "@/engine";
+import { dartScore } from "@/engine";
 import { cn } from "@/lib/utils";
 import { useGameStore } from "@/store";
 
@@ -60,16 +60,11 @@ export function ScoringInput({ className }: ScoringInputProps) {
   const hasDartEvents = useGameStore((state) => state.eventLog.some((event) => event.type === "dart_thrown"));
   const [selectedMultiplier, setSelectedMultiplier] = useState<Multiplier>(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const activePlayer = gameState?.players.find((player) => player.id === gameState.activePlayerId);
-  const currentTurn = activePlayer?.currentTurn ?? gameState?.currentTurn ?? [];
   const hasPlayableTurn = gameState?.phase === "playing" && Boolean(gameState.activePlayerId);
   const canThrowDart = hasPlayableTurn && !isSubmitting;
   const selectedMultiplierLabel = selectedMultiplier === 1
     ? scoring("single")
     : scoring("multiplierBadge", { multiplier: selectedMultiplier });
-  const currentTurnLabel = currentTurn.length > 0
-    ? currentTurn.map(formatDart).join(" · ")
-    : scoring("noDarts");
 
   function selectMultiplier(multiplier: Multiplier) {
     setSelectedMultiplier(multiplier);
@@ -84,6 +79,7 @@ export function ScoringInput({ className }: ScoringInputProps) {
 
     try {
       await throwDart(dart);
+      setSelectedMultiplier(1);
     } finally {
       setIsSubmitting(false);
     }
@@ -118,19 +114,15 @@ export function ScoringInput({ className }: ScoringInputProps) {
             <Undo2 aria-hidden="true" />
           </Button>
 
-          <div className="grid min-h-12 grid-cols-[auto_1fr] items-center gap-3 rounded-2xl border border-border/70 bg-background/80 px-3">
+          <div className="grid min-h-12 grid-cols-[auto_1fr] items-center gap-3 rounded-2xl border border-border/70 bg-background/80 px-3" aria-busy={isSubmitting} aria-live="polite">
             <span className="font-mono text-3xl font-black leading-none text-foreground">
-              {isSubmitting ? <Loader2 className="size-7 animate-spin" aria-hidden="true" /> : scoring("multiplierBadge", { multiplier: selectedMultiplier })}
+              {scoring("multiplierBadge", { multiplier: selectedMultiplier })}
             </span>
             <span className="min-w-0 truncate text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-              {isSubmitting ? scoring("savingDart") : scoring("tapScore")}
+              {selectedMultiplierLabel}
             </span>
           </div>
         </div>
-
-        <p className="rounded-xl border border-border/70 bg-background/60 px-3 py-1.5 text-xs text-muted-foreground" aria-live="polite">
-          <span className="font-semibold text-foreground">{scoring("currentDarts")}:</span> {currentTurnLabel}
-        </p>
 
         <div className="grid grid-cols-3 gap-1.5" aria-label={scoring("multiplier")}>
           {MULTIPLIER_OPTIONS.map((option) => {

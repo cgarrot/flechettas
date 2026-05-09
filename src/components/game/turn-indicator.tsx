@@ -1,10 +1,10 @@
 "use client";
 
-import { Bot, CircleDot, Dices, UserRound } from "lucide-react";
+import { Bot, CircleDot, UserRound } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { formatDart } from "@/engine";
 import { cn } from "@/lib/utils";
 import { useGameStore } from "@/store";
@@ -48,47 +48,40 @@ export function TurnIndicator({ botPlayback, className }: TurnIndicatorProps) {
   }
 
   return (
-    <Card className={cn("overflow-hidden border-primary/20 bg-card/95 shadow-2xl shadow-primary/10", className)} data-testid="turn-indicator">
-      <CardHeader className="border-b border-border/70 bg-background/55">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <Badge variant="outline" className="bg-card/80 uppercase tracking-[0.18em] text-primary">
-            <Dices className="size-3" aria-hidden="true" />
-            {game("turnKicker")}
-          </Badge>
-          <Badge variant={isBotTurn ? "secondary" : "default"}>
-            {isBotTurn ? <Bot className="size-3" aria-hidden="true" /> : <UserRound className="size-3" aria-hidden="true" />}
-            {isBotTurn ? game("botTurn") : game("humanTurn")}
-          </Badge>
-        </div>
-        <CardTitle className="text-2xl tracking-tight sm:text-3xl">{activePlayer.name}</CardTitle>
-      </CardHeader>
-
-      <CardContent className="space-y-5 p-5">
-        <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-center">
-          <div className="space-y-1">
-            <p className="text-sm font-medium text-muted-foreground">{game("dartCounterLabel")}</p>
-            <p className="font-mono text-6xl font-black leading-none tracking-tight" data-testid="dart-counter">
+    <Card className={cn("overflow-hidden border-primary/20 bg-card/95 py-0 shadow-2xl shadow-primary/10", className)} data-testid="turn-indicator">
+      <CardContent className="space-y-2 p-2 sm:space-y-4 sm:p-5">
+        <div className="grid grid-cols-[1fr_auto] items-center gap-2 rounded-2xl border border-border/70 bg-background/70 px-3 py-2 sm:px-4 sm:py-3" aria-live="polite">
+          <div className="min-w-0">
+            <p className="text-[0.68rem] font-bold uppercase tracking-[0.16em] text-primary sm:text-xs">{game("turnKicker")}</p>
+            <p className="truncate text-lg font-black tracking-tight sm:text-2xl">{activePlayer.name}</p>
+          </div>
+          <div className="grid justify-items-end gap-1">
+            <Badge variant={isBotTurn ? "secondary" : "default"} className="text-[0.65rem] sm:text-xs">
+              {isBotTurn ? <Bot className="size-3" aria-hidden="true" /> : <UserRound className="size-3" aria-hidden="true" />}
+              {isBotTurn ? game("botTurn") : game("humanTurn")}
+            </Badge>
+            <p className="font-mono text-2xl font-black leading-none tracking-tight sm:text-4xl" data-testid="dart-counter">
               {game("dartCounter", { current: dartNumber, total: 3 })}
             </p>
           </div>
-          <div className="flex gap-2" aria-hidden="true">
+          <div className="col-span-2 flex gap-1.5" aria-hidden="true">
             {[0, 1, 2].map((index) => (
               <span
                 key={index}
                 className={cn(
-                  "grid size-10 place-items-center rounded-full border border-border/70 bg-background/65 text-xs font-black text-muted-foreground",
+                  "h-1.5 flex-1 rounded-full border border-border/70 bg-muted text-xs font-black text-muted-foreground sm:h-2",
                   index < currentTurnLength && "border-primary bg-primary text-primary-foreground shadow-lg shadow-primary/20",
                   index + 1 === dartNumber && currentTurnLength < 3 && "border-accent text-accent shadow-lg shadow-accent/15",
                 )}
               >
-                {index + 1}
+                <span className="sr-only">{index + 1}</span>
               </span>
             ))}
           </div>
         </div>
 
         {isBotTurn ? (
-          <div className="space-y-3 rounded-2xl border border-primary/20 bg-background/65 p-4" data-testid="bot-turn-state">
+          <div className="space-y-2 rounded-2xl border border-primary/20 bg-background/65 p-3 sm:space-y-3 sm:p-4" data-testid="bot-turn-state">
             <div className="flex items-center justify-between gap-3">
               <p className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
                 <CircleDot className="size-4 animate-pulse text-primary" aria-hidden="true" />

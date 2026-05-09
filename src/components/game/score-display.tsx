@@ -91,14 +91,14 @@ export function ScoreDisplay({ className }: ScoreDisplayProps) {
   }
 
   return (
-    <section className={cn("space-y-2 sm:space-y-4", className)} aria-labelledby="score-display-title">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+    <section className={cn("space-y-1.5 sm:space-y-4", className)} aria-labelledby="score-display-title">
+      <div className="hidden flex-wrap items-center justify-between gap-3 sm:flex">
         <div className="space-y-1">
           <Badge variant="outline" className="bg-background/70 uppercase tracking-[0.18em] text-primary">
             <Activity className="size-3" aria-hidden="true" />
             {scoring("scoreboardKicker")}
           </Badge>
-          <h2 id="score-display-title" className="text-xl font-black tracking-tight sm:text-3xl">
+          <h2 className="text-xl font-black tracking-tight sm:text-3xl">
             {scoring("scoreboardTitle")}
           </h2>
         </div>
@@ -106,6 +106,9 @@ export function ScoreDisplay({ className }: ScoreDisplayProps) {
           {scoring("legSetCounter", { leg: gameState.currentLeg, set: gameState.currentSet })}
         </Badge>
       </div>
+      <h2 id="score-display-title" className="sr-only">
+        {scoring("scoreboardTitle")}
+      </h2>
 
       <div className="grid grid-cols-2 gap-1.5 md:grid-cols-4 md:gap-3">
         {gameState.players.map((player, index) => {
@@ -118,43 +121,43 @@ export function ScoreDisplay({ className }: ScoreDisplayProps) {
               key={player.id}
               className={cn(
                 "overflow-hidden border-border/70 bg-card/90 py-0 shadow-lg shadow-primary/5 transition-[border-color,background-color,box-shadow,transform] duration-200",
-                isActive && "border-primary/60 bg-primary/10 shadow-2xl shadow-primary/20",
+                isActive && "border-primary/70 bg-primary/15 shadow-2xl shadow-primary/20",
               )}
             >
               <CardHeader className="border-b border-border/70 bg-background/55 p-2 sm:p-5">
-                <div className="flex flex-col gap-1.5 sm:gap-3">
+                <div className="flex flex-col gap-1 sm:gap-3">
                   <div className="space-y-1">
                     <CardTitle className="flex min-w-0 items-center gap-1.5 text-sm sm:text-xl">
                       {isActive ? <Crown className="size-4 shrink-0 text-primary sm:size-5" aria-hidden="true" /> : null}
                       <span className="truncate">{player.name}</span>
                     </CardTitle>
-                    <CardDescription className="text-[0.65rem] sm:text-sm">
+                    <CardDescription className="hidden text-[0.65rem] sm:block sm:text-sm">
                       {isActive ? scoring("currentPlayer") : scoring("waitingPlayer")}
                     </CardDescription>
                   </div>
-                  <Badge variant={isActive ? "default" : "outline"} className="max-w-full text-[0.65rem] sm:text-xs">
+                  <Badge variant={isActive ? "default" : "outline"} className="hidden max-w-full text-[0.65rem] sm:inline-flex sm:text-xs">
                     {player.isBot ? scoring("botPlayer") : scoring("humanPlayer")}
                   </Badge>
                 </div>
               </CardHeader>
-              <CardContent className="space-y-3 p-3 sm:space-y-4 sm:p-5">
-                <div className="grid gap-1.5 sm:gap-3">
+              <CardContent className="space-y-2 p-2 sm:space-y-4 sm:p-5">
+                <div className="grid gap-1 sm:gap-3">
                   <div className="min-w-0">
-                    <p className="text-[0.65rem] font-bold uppercase tracking-[0.12em] text-muted-foreground sm:text-sm sm:tracking-[0.14em]">{primaryMetric.label}</p>
+                    <p className="text-[0.62rem] font-bold uppercase tracking-[0.12em] text-muted-foreground sm:text-sm sm:tracking-[0.14em]">{primaryMetric.label}</p>
                     <p
-                      className="font-mono text-4xl font-black leading-none tracking-tight text-foreground min-[360px]:text-5xl sm:text-7xl"
+                      className="font-mono text-5xl font-black leading-none tracking-tight text-foreground min-[360px]:text-6xl sm:text-7xl"
                       data-testid={`score-player-${index + 1}`}
                     >
                       {primaryMetric.value}
                     </p>
                   </div>
-                  <div className="rounded-xl border border-border/70 bg-background/65 px-2 py-1 sm:rounded-2xl sm:px-3 sm:py-2">
-                    <p className="text-xs text-muted-foreground">{secondaryMetric.label}</p>
-                    <p className="text-base font-semibold sm:text-lg">{secondaryMetric.value}</p>
+                  <div className="flex items-center justify-between gap-2 rounded-xl border border-border/70 bg-background/65 px-2 py-1 sm:rounded-2xl sm:px-3 sm:py-2">
+                    <p className="truncate text-[0.68rem] text-muted-foreground sm:text-xs">{secondaryMetric.label}</p>
+                    <p className="font-mono text-sm font-black sm:text-lg">{secondaryMetric.value}</p>
                   </div>
                 </div>
 
-                <div className="grid gap-1.5 rounded-xl border border-border/70 bg-background/65 p-2 sm:gap-2 sm:rounded-2xl sm:p-4">
+                <div className="hidden gap-1.5 rounded-xl border border-border/70 bg-background/65 p-2 sm:grid sm:gap-2 sm:rounded-2xl sm:p-4">
                   <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
                     <span className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground sm:gap-2 sm:text-sm">
                       <Target className="size-3.5 sm:size-4" aria-hidden="true" />

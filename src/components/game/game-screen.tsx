@@ -12,7 +12,6 @@ import { MatchEnd } from "@/components/game/match-end";
 import { ScoreDisplay } from "@/components/game/score-display";
 import { ScoringInput } from "@/components/game/scoring-input";
 import { TurnIndicator, type BotPlaybackState } from "@/components/game/turn-indicator";
-import { UndoButton } from "@/components/game/undo-button";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -285,12 +284,14 @@ export function GameScreen({ locale }: GameScreenProps) {
   const isBotTurn = Boolean(activePlayer?.isBot && gameState?.phase === "playing");
 
   return (
-    <main className="min-h-screen overflow-hidden bg-transparent px-2 py-3 text-foreground sm:px-6 sm:py-6 lg:px-8">
-      <section className="relative mx-auto flex max-w-7xl flex-col gap-3 sm:gap-6">
+    <main className="min-h-screen -mb-[calc(7rem+env(safe-area-inset-bottom))] overflow-hidden bg-transparent px-2 py-2 pb-[calc(1rem+env(safe-area-inset-bottom))] text-foreground sm:px-6 sm:py-6 md:mb-0 md:pb-0 lg:px-8">
+      <section className="relative mx-auto flex max-w-7xl flex-col gap-2 sm:gap-6">
         <div className="pointer-events-none absolute -top-28 right-4 -z-10 size-72 rounded-full bg-chart-2/25 blur-3xl" aria-hidden="true" />
         <div className="pointer-events-none absolute top-96 -left-24 -z-10 size-80 rounded-full bg-chart-1/20 blur-3xl" aria-hidden="true" />
 
-        <GameHeader locale={locale} gameState={gameState} />
+        <div className="hidden sm:block">
+          <GameHeader locale={locale} gameState={gameState} />
+        </div>
 
         {!hasCheckedResume ? <LoadingGameState /> : null}
 
@@ -300,13 +301,13 @@ export function GameScreen({ locale }: GameScreenProps) {
           <>
             <ScoreDisplay />
 
-            <section className="grid gap-3 lg:grid-cols-[0.82fr_1.18fr] lg:items-start" aria-label={game("gameBoardLabel")}>
-              <div className="space-y-3 sm:space-y-4">
+            <section className="grid gap-2 lg:grid-cols-[0.82fr_1.18fr] lg:items-start lg:gap-3" aria-label={game("gameBoardLabel")}>
+              <div className="space-y-2 sm:space-y-4">
                 <TurnIndicator botPlayback={botPlayback} />
-                <CheckoutSuggestions />
+                <CheckoutSuggestions className="hidden sm:block" />
               </div>
 
-              <div className="space-y-3 sm:space-y-4">
+              <div className="space-y-2 sm:space-y-4">
                 <div className="relative">
                   <ScoringInput className={cn(isBotTurn && "pointer-events-none opacity-60")} />
                   {isBotTurn ? (
@@ -321,9 +322,6 @@ export function GameScreen({ locale }: GameScreenProps) {
                   ) : null}
                 </div>
 
-                <div className="flex justify-end">
-                  <UndoButton />
-                </div>
               </div>
             </section>
 

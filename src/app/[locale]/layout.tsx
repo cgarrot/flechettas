@@ -75,7 +75,13 @@ export default async function LocaleLayout({
       </head>
       <body>
         <NextIntlClientProvider locale={locale} messages={messages}>
-          <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false} disableTransitionOnChange>
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="dark"
+            enableSystem={false}
+            themes={["dark", "light", "brass", "club", "chalk"]}
+            disableTransitionOnChange
+          >
             <div className="min-h-dvh bg-background text-foreground">
               <div className="md:pl-24">
                 <AppHeader locale={typedLocale} />

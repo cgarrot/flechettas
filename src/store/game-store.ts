@@ -4,6 +4,7 @@ import { create } from "zustand";
 
 import {
   clearActiveGame,
+  clearSharedActiveGameCache,
   loadActiveGame,
   saveActiveGame,
 } from "@/db/active-game-store";
@@ -74,6 +75,7 @@ export type GameStoreState = ActiveGameSnapshot & {
   nextTurn: () => Promise<void>;
   continueAfterWinner: () => Promise<void>;
   resumeActiveGame: (gameId?: string) => Promise<GameState | null>;
+  resumeSharedActiveGame: () => Promise<GameState | null>;
   setSharedSessionContext: (context: {
     code: string | null;
     playerId: PlayerId | null;
@@ -320,10 +322,27 @@ function currentTurnFor(state: GameState): Turn {
   return state.currentTurn;
 }
 
-async function saveSnapshot(gameState: GameState): Promise<ActiveGameSnapshot> {
+function uniqueSegment(): string {
+  return (globalThis.crypto?.randomUUID?.() ?? Math.random().toString(36).slice(2))
+    .replace(/[^0-9A-Za-z]+/g, "")
+    .slice(0, 12);
+}
+
+function gameInstanceIdFor(baseGameId: string, occurredAt: string): string {
+  const timestampSegment = occurredAt.replace(/[^0-9A-Za-z]+/g, "");
+
+  return `${baseGameId}-${timestampSegment}-${uniqueSegment()}`;
+}
+
+async function saveSnapshot(
+  gameState: GameState,
+  options: Readonly<{ sharedSessionCode?: string }> = {},
+): Promise<ActiveGameSnapshot> {
   const snapshot = snapshotFromState(gameState);
 
-  await saveActiveGame(gameState, snapshot.eventLog);
+  await saveActiveGame(gameState, snapshot.eventLog, options.sharedSessionCode
+    ? { source: "shared", sharedSessionCode: options.sharedSessionCode }
+    : { source: "local" });
 
   return snapshot;
 }
@@ -463,17 +482,21 @@ async function saveSnapshotEverywhere(
   gameState: GameState,
   getState: () => GameStoreState,
 ): Promise<ActiveGameSnapshot & { sharedRevision?: number; sharedSyncError?: string | null }> {
-  const localSnapshot = await saveSnapshot(gameState);
+  const storeState = getState();
+  const localSnapshot = await saveSnapshot(gameState, { sharedSessionCode: storeState.sharedSessionCode ?? undefined });
 
   try {
-    const sharedResult = await saveSharedSnapshotIfNeeded(getState(), localSnapshot);
+    const sharedResult = await saveSharedSnapshotIfNeeded(storeState, localSnapshot);
 
     if (sharedResult === null) {
       return localSnapshot;
     }
 
-    if (sharedResult.snapshot.gameState) {
-      await saveActiveGame(sharedResult.snapshot.gameState, sharedResult.snapshot.eventLog);
+    if (sharedResult.snapshot.gameState && storeState.sharedSessionCode) {
+      await saveActiveGame(sharedResult.snapshot.gameState, sharedResult.snapshot.eventLog, {
+        source: "shared",
+        sharedSessionCode: storeState.sharedSessionCode,
+      });
     }
 
     return {
@@ -505,6 +528,7 @@ export const useGameStore = create<GameStoreState>()((set, get) => ({
     const createdState = createStateForConfig(config, players);
     const initialState: GameState = {
       ...createdState,
+      id: gameInstanceIdFor(createdState.id, occurredAt),
       createdAt: occurredAt,
       updatedAt: occurredAt,
     };
@@ -658,11 +682,7 @@ export const useGameStore = create<GameStoreState>()((set, get) => ({
     const { sharedSessionCode } = get();
 
     if (sharedSessionCode && gameId === undefined) {
-      const sharedState = await get().refreshSharedActiveGame();
-
-      if (sharedState !== null) {
-        return sharedState;
-      }
+      return get().resumeSharedActiveGame();
     }
 
     const activeGame = await loadActiveGame(gameId);
@@ -689,6 +709,45 @@ export const useGameStore = create<GameStoreState>()((set, get) => ({
     return activeGame.gameState;
   },
 
+  async resumeSharedActiveGame() {
+    const { sharedSessionCode } = get();
+
+    if (!sharedSessionCode) {
+      return null;
+    }
+
+    try {
+      const activeGame = await fetchSharedActiveGame(sharedSessionCode);
+
+      if (get().sharedSessionCode !== sharedSessionCode) {
+        return get().gameState;
+      }
+
+      if (activeGame === null) {
+        await clearSharedActiveGameCache(sharedSessionCode);
+
+        if (get().sharedSessionCode !== sharedSessionCode) {
+          return get().gameState;
+        }
+
+        set({
+          ...emptySnapshot(),
+          sharedRevision: 0,
+          sharedSyncError: null,
+        });
+
+        return null;
+      }
+
+      return get().hydrateSharedActiveGame(activeGame);
+    } catch (error) {
+      console.error(error);
+      set({ sharedSyncError: "poll_failed" });
+
+      return null;
+    }
+  },
+
   setSharedSessionContext(context) {
     const currentState = get();
     const previousCode = currentState.sharedSessionCode;
@@ -708,10 +767,9 @@ export const useGameStore = create<GameStoreState>()((set, get) => ({
   async hydrateSharedActiveGame(activeGame) {
     if (activeGame === null) {
       const clearedSessionCode = get().sharedSessionCode;
-      const clearedGameId = get().gameState?.id;
 
-      if (clearedGameId) {
-        await clearActiveGame(clearedGameId);
+      if (clearedSessionCode) {
+        await clearSharedActiveGameCache(clearedSessionCode);
       }
 
       if (get().sharedSessionCode !== clearedSessionCode) {
@@ -736,13 +794,12 @@ export const useGameStore = create<GameStoreState>()((set, get) => ({
     const snapshot = activeGame.snapshot;
 
     if (snapshot.gameState) {
-      await saveActiveGame(snapshot.gameState, snapshot.eventLog);
+      await saveActiveGame(snapshot.gameState, snapshot.eventLog, {
+        source: "shared",
+        sharedSessionCode: activeGameSessionCode,
+      });
     } else {
-      const currentGameId = get().gameState?.id;
-
-      if (currentGameId) {
-        await clearActiveGame(currentGameId);
-      }
+      await clearSharedActiveGameCache(activeGameSessionCode);
     }
 
     if (get().sharedSessionCode !== activeGameSessionCode) {
@@ -773,11 +830,7 @@ export const useGameStore = create<GameStoreState>()((set, get) => ({
       }
 
       if (activeGame === null) {
-        const currentGameId = get().gameState?.id;
-
-        if (currentGameId) {
-          await clearActiveGame(currentGameId);
-        }
+        await clearSharedActiveGameCache(sharedSessionCode);
 
         if (get().sharedSessionCode !== sharedSessionCode) {
           return get().gameState;

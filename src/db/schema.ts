@@ -31,6 +31,8 @@ export type ActiveGameRecord = {
   gameState: GameState;
   eventLog: readonly GameEvent[];
   updatedAt: string;
+  source?: "local" | "shared";
+  sharedSessionCode?: string;
 };
 
 export class FlechettasDatabase extends Dexie {

@@ -87,13 +87,13 @@ export function AppHeader({ locale }: AppHeaderProps) {
             className={cn("flex min-h-11 min-w-11 items-center gap-3 rounded-2xl border border-primary/25 bg-card/90 px-3 py-2 shadow-lg shadow-primary/10 transition-[border-color,background-color,box-shadow] hover:border-primary/45 hover:bg-card", isScoring && "hidden sm:flex")}
             data-testid="app-header-brand"
           >
-            <span className="grid size-9 shrink-0 place-items-center overflow-hidden rounded-xl bg-primary shadow-lg shadow-primary/25" aria-hidden="true">
+            <span className="brand-logo-tile grid size-9 shrink-0 place-items-center overflow-hidden rounded-xl border" aria-hidden="true">
               <Image
-                src="/icon-192.png"
+                src="/flechettas-logo-192.png"
                 alt=""
                 width={36}
                 height={36}
-                className="size-9 object-cover"
+                className="brand-logo-image size-9 object-cover"
               />
             </span>
             <span className="truncate text-sm font-black tracking-tight sm:text-base">Fléchettas</span>

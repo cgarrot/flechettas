@@ -14,6 +14,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  isValidSharedSessionCode,
+  MAX_SHARED_SESSION_CODE_LENGTH,
+  MIN_SHARED_SESSION_CODE_LENGTH,
+  normalizeSharedSessionCode,
+} from "@/lib/shared-session-code";
 import { createSharedSession, createSharedSessionPlayer, ensureSharedSession, fetchSharedSession } from "@/lib/shared-session-api";
 import {
   clearStoredSessionCode,
@@ -63,14 +69,23 @@ export function SessionGate() {
     [selectedPlayerId, session],
   );
   const needsPlayer = Boolean(session && !selectedPlayer);
+  const normalizedSessionCodeInput = normalizeSharedSessionCode(sessionCodeInput);
 
   useEffect(() => {
     const importedCode = importedSessionCodeFromUrl();
-    const storedCode = importedCode ? writeStoredSessionCode(importedCode) : readStoredSessionCode();
+    const storedCode = importedCode ?? readStoredSessionCode();
     const nextDeviceId = readOrCreateDeviceId();
 
     setDeviceId(nextDeviceId);
     if (!storedCode) {
+      setSharedSessionContext({ code: null, playerId: null, deviceId: nextDeviceId, players: [] });
+      return;
+    }
+
+    if (!isValidSharedSessionCode(storedCode)) {
+      clearStoredSessionCode();
+      setSessionCodeInput(storedCode);
+      setError(sessionCopy("codeInvalid", { min: MIN_SHARED_SESSION_CODE_LENGTH }));
       setSharedSessionContext({ code: null, playerId: null, deviceId: nextDeviceId, players: [] });
       return;
     }
@@ -165,7 +180,18 @@ export function SessionGate() {
   async function activateSession(code: string) {
     const normalizedCode = normalizeStoredSessionCode(code);
 
-    if (normalizedCode.length === 0 || !deviceId) {
+    if (!deviceId) {
+      return;
+    }
+
+    if (normalizedCode.length === 0) {
+      setError(sessionCopy("codeRequired"));
+      return;
+    }
+
+    if (!isValidSharedSessionCode(normalizedCode)) {
+      setSessionCodeInput(normalizedCode);
+      setError(sessionCopy("codeInvalid", { min: MIN_SHARED_SESSION_CODE_LENGTH }));
       return;
     }
 
@@ -173,13 +199,14 @@ export function SessionGate() {
     setError(null);
 
     try {
-      const loadedSession = await ensureSharedSession(writeStoredSessionCode(normalizedCode));
+      const loadedSession = await ensureSharedSession(normalizedCode);
       const storedPlayerId = readStoredSessionPlayerId(loadedSession.code);
       const playerExists = loadedSession.players.some((player) => player.id === storedPlayerId);
       const nextPlayerId = playerExists ? storedPlayerId : null;
 
       setSession(loadedSession);
       setSelectedPlayerId(nextPlayerId);
+      writeStoredSessionCode(loadedSession.code);
       setSharedSessionContext({
         code: loadedSession.code,
         playerId: nextPlayerId,
@@ -312,9 +339,10 @@ export function SessionGate() {
                 className="min-h-10 uppercase"
                 placeholder={sessionCopy("codePlaceholder")}
                 aria-label={sessionCopy("codeLabel")}
-                onChange={(event) => setSessionCodeInput(event.target.value)}
+                maxLength={MAX_SHARED_SESSION_CODE_LENGTH}
+                onChange={(event) => setSessionCodeInput(normalizeSharedSessionCode(event.target.value))}
               />
-              <Button type="button" size="sm" disabled={isBusy} onClick={() => { void activateSession(sessionCodeInput); }}>
+              <Button type="button" size="sm" disabled={isBusy || normalizedSessionCodeInput.length === 0} onClick={() => { void activateSession(sessionCodeInput); }}>
                 {sessionCopy("join")}
               </Button>
               <Button type="button" size="sm" variant="secondary" disabled={isBusy} onClick={() => { void createSession(); }}>

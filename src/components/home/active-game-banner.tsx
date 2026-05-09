@@ -33,10 +33,11 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { clearActiveGame, loadActiveGames, type LoadedActiveGame } from "@/db";
+import { fetchSharedActiveGame } from "@/lib/shared-session-api";
 import { useGameStore } from "@/store";
 
 import type { Locale } from "@/i18n/routing";
-import type { GameMode, GameState, PlayerState } from "@/types";
+import type { GameMode, GameState, PlayerState, SharedActiveGame } from "@/types";
 
 type ActiveGameBannerProps = Readonly<{
   locale: Locale;
@@ -147,10 +148,11 @@ export function ActiveGameBanner({ locale }: ActiveGameBannerProps) {
   const scoring = useTranslations("Scoring");
   const gameState = useGameStore((state) => state.gameState);
   const sharedSessionCode = useGameStore((state) => state.sharedSessionCode);
-  const refreshSharedActiveGame = useGameStore((state) => state.refreshSharedActiveGame);
   const resumeActiveGame = useGameStore((state) => state.resumeActiveGame);
+  const resumeSharedActiveGame = useGameStore((state) => state.resumeSharedActiveGame);
   const [hasCheckedActiveGames, setHasCheckedActiveGames] = useState(false);
   const [localActiveGames, setLocalActiveGames] = useState<LoadedActiveGame[]>([]);
+  const [sharedActiveGameRecord, setSharedActiveGameRecord] = useState<SharedActiveGame | null>(null);
   const [isExpanded, setIsExpanded] = useState(false);
   const [resumingGameId, setResumingGameId] = useState<string | null>(null);
   const [abandoningGameId, setAbandoningGameId] = useState<string | null>(null);
@@ -163,14 +165,12 @@ export function ActiveGameBanner({ locale }: ActiveGameBannerProps) {
 
     async function loadBannerGames() {
       try {
-        const activeGames = await loadActiveGames();
+        const activeGames = await loadActiveGames({ source: "local" });
+        const sharedGame = sharedSessionCode ? await fetchSharedActiveGame(sharedSessionCode) : null;
 
         if (!isCancelled) {
           setLocalActiveGames(activeGames);
-        }
-
-        if (sharedSessionCode) {
-          await refreshSharedActiveGame();
+          setSharedActiveGameRecord(sharedGame);
         }
       } catch {
         if (!isCancelled) {
@@ -188,10 +188,10 @@ export function ActiveGameBanner({ locale }: ActiveGameBannerProps) {
     return () => {
       isCancelled = true;
     };
-  }, [refreshSharedActiveGame, sharedSessionCode]);
+  }, [sharedSessionCode]);
 
   async function reloadLocalActiveGames() {
-    setLocalActiveGames(await loadActiveGames());
+    setLocalActiveGames(await loadActiveGames({ source: "local" }));
   }
 
   async function handleResume(item: ActiveGameListItem) {
@@ -200,7 +200,7 @@ export function ActiveGameBanner({ locale }: ActiveGameBannerProps) {
 
     try {
       const resumedState = item.source === "shared"
-        ? await resumeActiveGame()
+        ? await resumeSharedActiveGame()
         : await resumeActiveGame(item.id);
 
       if (resumedState) {
@@ -228,7 +228,7 @@ export function ActiveGameBanner({ locale }: ActiveGameBannerProps) {
       await clearActiveGame(confirmGame.id);
 
       if (gameState?.id === confirmGame.id) {
-        await resumeActiveGame();
+        await resumeActiveGame(confirmGame.id);
       }
 
       await reloadLocalActiveGames();
@@ -240,16 +240,16 @@ export function ActiveGameBanner({ locale }: ActiveGameBannerProps) {
     }
   }
 
-  const sharedActiveGame: ActiveGameListItem | null = sharedSessionCode && gameState
+  const sharedGameState = sharedActiveGameRecord?.snapshot.gameState ?? null;
+  const sharedActiveGame: ActiveGameListItem | null = sharedActiveGameRecord && sharedGameState
     ? {
-        id: gameState.id,
-        gameState,
-        updatedAt: gameState.updatedAt,
+        id: `shared-${sharedActiveGameRecord.sessionCode}`,
+        gameState: sharedGameState,
+        updatedAt: sharedActiveGameRecord.updatedAt,
         source: "shared",
       }
     : null;
   const localGames = localActiveGames
-    .filter((record) => record.id !== sharedActiveGame?.id)
     .map(listItemFromLocalRecord);
   const visibleLocalGames = !isExpanded && localGames.length > 1 ? localGames.slice(0, 1) : localGames;
   const hiddenLocalGameCount = localGames.length - visibleLocalGames.length;

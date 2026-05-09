@@ -1,6 +1,16 @@
 "use client";
 
-import { Activity, AlertTriangle, ArrowRight, Loader2, Play, Trash2, Users } from "lucide-react";
+import {
+  Activity,
+  AlertTriangle,
+  ArrowRight,
+  ChevronDown,
+  ChevronUp,
+  Loader2,
+  Play,
+  Trash2,
+  Users,
+} from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -22,14 +32,21 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { clearActiveGame } from "@/db";
+import { clearActiveGame, loadActiveGames, type LoadedActiveGame } from "@/db";
 import { useGameStore } from "@/store";
 
 import type { Locale } from "@/i18n/routing";
-import type { GameMode, PlayerState } from "@/types";
+import type { GameMode, GameState, PlayerState } from "@/types";
 
 type ActiveGameBannerProps = Readonly<{
   locale: Locale;
+}>;
+
+type ActiveGameListItem = Readonly<{
+  id: string;
+  gameState: GameState;
+  updatedAt: string;
+  source: "local" | "shared";
 }>;
 
 type ScoreSummary = Readonly<{
@@ -41,7 +58,7 @@ type ScoreSummary = Readonly<{
 type ScoreLabelValues = Readonly<{ count: number }>;
 type ScoreLabel = (key: string, values?: ScoreLabelValues) => string;
 
-type ActionErrorKey = "activeLoadFailed" | "activeActionFailed";
+type ActionErrorKey = "activeLoadFailed" | "activeActionFailed" | "activeGameNotFound";
 
 const modeMessageKeys = {
   x01: "x01",
@@ -114,6 +131,15 @@ function scoreSummaryFor(
   }
 }
 
+function listItemFromLocalRecord(record: LoadedActiveGame): ActiveGameListItem {
+  return {
+    id: record.id,
+    gameState: record.gameState,
+    updatedAt: record.updatedAt,
+    source: "local",
+  };
+}
+
 export function ActiveGameBanner({ locale }: ActiveGameBannerProps) {
   const router = useRouter();
   const home = useTranslations("HomePage");
@@ -121,138 +147,252 @@ export function ActiveGameBanner({ locale }: ActiveGameBannerProps) {
   const scoring = useTranslations("Scoring");
   const gameState = useGameStore((state) => state.gameState);
   const sharedSessionCode = useGameStore((state) => state.sharedSessionCode);
+  const refreshSharedActiveGame = useGameStore((state) => state.refreshSharedActiveGame);
   const resumeActiveGame = useGameStore((state) => state.resumeActiveGame);
-  const [hasCheckedActiveGame, setHasCheckedActiveGame] = useState(false);
-  const [isResuming, setIsResuming] = useState(false);
-  const [isAbandoning, setIsAbandoning] = useState(false);
-  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const [hasCheckedActiveGames, setHasCheckedActiveGames] = useState(false);
+  const [localActiveGames, setLocalActiveGames] = useState<LoadedActiveGame[]>([]);
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [resumingGameId, setResumingGameId] = useState<string | null>(null);
+  const [abandoningGameId, setAbandoningGameId] = useState<string | null>(null);
+  const [confirmGame, setConfirmGame] = useState<ActiveGameListItem | null>(null);
   const [actionErrorKey, setActionErrorKey] = useState<ActionErrorKey | null>(null);
 
   useEffect(() => {
     let isCancelled = false;
-    setHasCheckedActiveGame(false);
+    setHasCheckedActiveGames(false);
 
-    async function loadActiveGame() {
+    async function loadBannerGames() {
       try {
-        await resumeActiveGame();
+        const activeGames = await loadActiveGames();
+
+        if (!isCancelled) {
+          setLocalActiveGames(activeGames);
+        }
+
+        if (sharedSessionCode) {
+          await refreshSharedActiveGame();
+        }
       } catch {
         if (!isCancelled) {
           setActionErrorKey("activeLoadFailed");
         }
       } finally {
         if (!isCancelled) {
-          setHasCheckedActiveGame(true);
+          setHasCheckedActiveGames(true);
         }
       }
     }
 
-    void loadActiveGame();
+    void loadBannerGames();
 
     return () => {
       isCancelled = true;
     };
-  }, [resumeActiveGame, sharedSessionCode]);
+  }, [refreshSharedActiveGame, sharedSessionCode]);
 
-  async function handleResume() {
-    setIsResuming(true);
+  async function reloadLocalActiveGames() {
+    setLocalActiveGames(await loadActiveGames());
+  }
+
+  async function handleResume(item: ActiveGameListItem) {
+    setResumingGameId(item.id);
     setActionErrorKey(null);
 
     try {
-      const resumedState = await resumeActiveGame();
+      const resumedState = item.source === "shared"
+        ? await resumeActiveGame()
+        : await resumeActiveGame(item.id);
 
       if (resumedState) {
         router.push(gameRouteFor(locale));
+      } else {
+        setActionErrorKey("activeGameNotFound");
+        await reloadLocalActiveGames();
       }
     } catch {
       setActionErrorKey("activeActionFailed");
     } finally {
-      setIsResuming(false);
+      setResumingGameId(null);
     }
   }
 
   async function handleAbandon() {
-    setIsAbandoning(true);
+    if (confirmGame === null || confirmGame.source !== "local") {
+      return;
+    }
+
+    setAbandoningGameId(confirmGame.id);
     setActionErrorKey(null);
 
     try {
-      await clearActiveGame();
-      await resumeActiveGame();
-      setIsConfirmOpen(false);
+      await clearActiveGame(confirmGame.id);
+
+      if (gameState?.id === confirmGame.id) {
+        await resumeActiveGame();
+      }
+
+      await reloadLocalActiveGames();
+      setConfirmGame(null);
     } catch {
       setActionErrorKey("activeActionFailed");
     } finally {
-      setIsAbandoning(false);
+      setAbandoningGameId(null);
     }
   }
 
-  if (!hasCheckedActiveGame && !gameState) {
+  const sharedActiveGame: ActiveGameListItem | null = sharedSessionCode && gameState
+    ? {
+        id: gameState.id,
+        gameState,
+        updatedAt: gameState.updatedAt,
+        source: "shared",
+      }
+    : null;
+  const localGames = localActiveGames
+    .filter((record) => record.id !== sharedActiveGame?.id)
+    .map(listItemFromLocalRecord);
+  const visibleLocalGames = !isExpanded && localGames.length > 1 ? localGames.slice(0, 1) : localGames;
+  const hiddenLocalGameCount = localGames.length - visibleLocalGames.length;
+  const visibleGames = sharedActiveGame ? [sharedActiveGame, ...visibleLocalGames] : visibleLocalGames;
+  const totalGameCount = localGames.length + (sharedActiveGame ? 1 : 0);
+
+  if (!hasCheckedActiveGames && totalGameCount === 0) {
     return null;
   }
 
-  if (!gameState) {
+  if (totalGameCount === 0) {
     return null;
   }
 
-  const modeLabel = modes(modeMessageKeys[gameState.mode]);
-  const isSharedActiveGame = Boolean(sharedSessionCode);
+  const isBusy = resumingGameId !== null || abandoningGameId !== null;
+  const confirmModeLabel = confirmGame ? modes(modeMessageKeys[confirmGame.gameState.mode]) : "";
 
   return (
     <Card className="overflow-hidden border-primary/25 bg-card/95 py-0 shadow-2xl shadow-primary/10 backdrop-blur" data-testid="active-game-banner">
-      <CardHeader className="border-b border-border/70 bg-background/60 p-5 sm:p-6">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="space-y-3">
+      <CardHeader className="border-b border-border/70 bg-background/60 p-4 sm:p-5">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0 space-y-2">
             <div className="flex flex-wrap items-center gap-2">
               <Badge variant="outline" className="bg-card/80 uppercase tracking-[0.18em] text-primary">
                 <Activity className="size-3" aria-hidden="true" />
                 {home("activeGameKicker")}
               </Badge>
-              <Badge variant="secondary">{modeLabel}</Badge>
+              <Badge variant="secondary">{home("activeGamesCount", { count: totalGameCount })}</Badge>
             </div>
             <div className="space-y-1">
-              <CardTitle className="text-2xl tracking-tight sm:text-3xl">
-                {home("activeGameTitle")}
+              <CardTitle className="text-xl tracking-tight sm:text-2xl">
+                {home("activeLocalGamesTitle", { count: totalGameCount })}
               </CardTitle>
-              <CardDescription className="text-sm leading-6 sm:text-base">
-                {home(isSharedActiveGame ? "activeSharedGameDescription" : "activeGameDescription", { mode: modeLabel })}
+              <CardDescription className="text-sm leading-6">
+                {home("activeLocalGamesDescription")}
               </CardDescription>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 rounded-2xl border border-primary/20 bg-card/80 px-3 py-2 text-sm text-muted-foreground">
-            <Users className="size-4" aria-hidden="true" />
-            {home("activePlayers", { count: gameState.players.length })}
-          </div>
+          {localGames.length > 1 ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="rounded-full"
+              aria-expanded={isExpanded}
+              onClick={() => setIsExpanded((current) => !current)}
+            >
+              {isExpanded ? <ChevronUp aria-hidden="true" /> : <ChevronDown aria-hidden="true" />}
+              {isExpanded
+                ? home("showFewerActiveGames")
+                : home("showAllActiveGames", { count: hiddenLocalGameCount })}
+            </Button>
+          ) : null}
         </div>
       </CardHeader>
 
-      <CardContent className="space-y-5 p-5 sm:p-6">
-        <div className="grid gap-3" aria-label={home("activeScores")}>
-          {gameState.players.map((player, index) => {
-            const summary = scoreSummaryFor(player, (key, values) => (values ? scoring(key, values) : scoring(key)));
-            const isActive = player.id === gameState.activePlayerId;
+      <CardContent className="space-y-3 p-4 sm:p-5">
+        <div className="space-y-3" aria-label={home("activeLocalGamesListLabel")}>
+          {visibleGames.map((item) => {
+            const gameModeLabel = modes(modeMessageKeys[item.gameState.mode]);
+            const activePlayer = item.gameState.players.find((player) => player.id === item.gameState.activePlayerId);
+            const playerCountLabel = home("activePlayers", { count: item.gameState.players.length });
+            const scoreLabels = item.gameState.players.slice(0, 3).map((player) => {
+              const summary = scoreSummaryFor(player, (key, values) => (values ? scoring(key, values) : scoring(key)));
+
+              return `${player.name}: ${summary.value}`;
+            });
 
             return (
               <div
-                key={player.id}
-                 className="grid grid-cols-[1fr_auto] items-center gap-4 rounded-2xl border border-border/70 bg-background/65 px-4 py-3"
+                key={`${item.source}-${item.id}`}
+                className="grid gap-3 rounded-2xl border border-border/70 bg-background/65 p-3 sm:grid-cols-[1fr_auto] sm:items-center"
               >
-                <div className="min-w-0 space-y-1">
-                  <p className="truncate font-medium">{player.name}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {isActive ? scoring("currentPlayer") : scoring("waitingPlayer")}
-                  </p>
+                <div className="min-w-0 space-y-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge variant={item.source === "shared" ? "default" : "secondary"}>
+                      {item.source === "shared" ? home("activeSharedGameKicker") : gameModeLabel}
+                    </Badge>
+                    {item.source === "shared" ? <Badge variant="secondary">{gameModeLabel}</Badge> : null}
+                    <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                      <Users className="size-3.5" aria-hidden="true" />
+                      {playerCountLabel}
+                    </span>
+                  </div>
+                  <div className="min-w-0 space-y-1">
+                    <p className="truncate text-sm font-semibold sm:text-base">
+                      {item.source === "shared"
+                        ? home("activeSharedGameTitle")
+                        : home("activeGameRowMeta", { mode: gameModeLabel, players: playerCountLabel })}
+                    </p>
+                    <p className="truncate text-xs text-muted-foreground">
+                      {activePlayer ? `${scoring("currentPlayer")}: ${activePlayer.name}` : gameModeLabel}
+                    </p>
+                    <p className="line-clamp-2 text-xs text-muted-foreground">
+                      {scoreLabels.join(" · ")}
+                    </p>
+                  </div>
                 </div>
-                <div className="text-right">
-                  <p className="text-xs text-muted-foreground">{summary.label}</p>
-                  <p className="font-mono text-3xl font-black leading-none tracking-tight" data-testid={`active-score-${index + 1}`}>
-                    {summary.value}
-                  </p>
-                  <p className="mt-1 text-xs text-muted-foreground">{summary.detail}</p>
+
+                <div className="grid grid-cols-2 gap-2 sm:flex sm:justify-end">
+                  <Button
+                    type="button"
+                    size="sm"
+                    className="rounded-xl"
+                    data-testid={`resume-game-${item.id}`}
+                    aria-label={home("resumeGameA11y", { mode: gameModeLabel })}
+                    disabled={isBusy}
+                    onClick={() => {
+                      void handleResume(item);
+                    }}
+                  >
+                    {resumingGameId === item.id ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Play aria-hidden="true" />}
+                    {resumingGameId === item.id ? home("resumeLoading") : home("resumeGame")}
+                    <ArrowRight aria-hidden="true" />
+                  </Button>
+
+                  {item.source === "local" ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="rounded-xl text-destructive hover:bg-destructive/10 hover:text-destructive"
+                      data-testid={`abandon-game-${item.id}`}
+                      aria-label={home("abandonGameA11y", { mode: gameModeLabel })}
+                      disabled={isBusy}
+                      onClick={() => setConfirmGame(item)}
+                    >
+                      <Trash2 aria-hidden="true" />
+                      {home("abandonGame")}
+                    </Button>
+                  ) : null}
                 </div>
               </div>
             );
           })}
         </div>
+
+        {hiddenLocalGameCount > 0 ? (
+          <p className="text-center text-xs text-muted-foreground">
+            {home("activeLocalGamesCollapsedSummary", { count: hiddenLocalGameCount })}
+          </p>
+        ) : null}
 
         {actionErrorKey ? (
           <p className="flex items-start gap-2 rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm font-medium text-destructive" role="alert">
@@ -260,52 +400,28 @@ export function ActiveGameBanner({ locale }: ActiveGameBannerProps) {
             {home(actionErrorKey)}
           </p>
         ) : null}
-
-        <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
-          <Button
-            type="button"
-            size="lg"
-            className="min-h-14 rounded-xl text-base"
-            data-testid="resume-game"
-            disabled={isResuming || isAbandoning}
-            onClick={() => {
-              void handleResume();
-            }}
-          >
-            {isResuming ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Play aria-hidden="true" />}
-            {isResuming ? home("resumeLoading") : home("resumeGame")}
-            <ArrowRight aria-hidden="true" />
-          </Button>
-
-          {!isSharedActiveGame ? (
-            <Button
-              type="button"
-              variant="outline"
-              size="lg"
-              className="min-h-14 rounded-xl text-base text-destructive hover:bg-destructive/10 hover:text-destructive"
-              data-testid="abandon-game"
-              disabled={isResuming || isAbandoning}
-              onClick={() => setIsConfirmOpen(true)}
-            >
-              <Trash2 aria-hidden="true" />
-              {home("abandonGame")}
-            </Button>
-          ) : null}
-        </div>
       </CardContent>
 
-      <Dialog open={isConfirmOpen} onOpenChange={setIsConfirmOpen}>
+      <Dialog open={confirmGame !== null} onOpenChange={(isOpen) => setConfirmGame(isOpen ? confirmGame : null)}>
         <DialogContent className="border-primary/20 bg-card/95 sm:rounded-2xl">
           <DialogHeader>
-            <DialogTitle>{home("abandonDialogTitle")}</DialogTitle>
-            <DialogDescription>{home("abandonDialogDescription")}</DialogDescription>
+            <DialogTitle>
+              {confirmGame
+                ? home("abandonDialogTitleForGame", { mode: confirmModeLabel })
+                : home("abandonDialogTitle")}
+            </DialogTitle>
+            <DialogDescription>
+              {confirmGame
+                ? home("abandonDialogDescriptionForGame", { mode: confirmModeLabel })
+                : home("abandonDialogDescription")}
+            </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button
               type="button"
               variant="outline"
-              disabled={isAbandoning}
-              onClick={() => setIsConfirmOpen(false)}
+              disabled={abandoningGameId !== null}
+              onClick={() => setConfirmGame(null)}
             >
               {home("cancelAbandon")}
             </Button>
@@ -313,13 +429,13 @@ export function ActiveGameBanner({ locale }: ActiveGameBannerProps) {
               type="button"
               variant="destructive"
               data-testid="confirm-abandon-game"
-              disabled={isAbandoning}
+              disabled={abandoningGameId !== null}
               onClick={() => {
                 void handleAbandon();
               }}
             >
-              {isAbandoning ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Trash2 aria-hidden="true" />}
-              {isAbandoning ? home("abandoningGame") : home("confirmAbandon")}
+              {abandoningGameId !== null ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Trash2 aria-hidden="true" />}
+              {abandoningGameId !== null ? home("abandoningGame") : home("confirmAbandon")}
             </Button>
           </DialogFooter>
         </DialogContent>

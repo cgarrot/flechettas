@@ -11,6 +11,8 @@ import {
   CardContent,
 } from "@/components/ui/card";
 import { createSharedSessionPlayer } from "@/lib/shared-session-api";
+import { readSetupPreferences, writeSetupPreferences } from "@/lib/setup-preferences-storage";
+import { cn } from "@/lib/utils";
 import { useGameStore } from "@/store";
 
 import {
@@ -71,6 +73,7 @@ export function SetupFlow({ locale }: SetupFlowProps) {
   const nextBotId = useRef(1);
   const [selectedMode, setSelectedMode] = useState<GameMode>("x01");
   const [configs, setConfigs] = useState<Record<GameMode, GameConfig>>(() => createDefaultGameConfigs());
+  const [hasLoadedSetupPreferences, setHasLoadedSetupPreferences] = useState(false);
   const [step, setStep] = useState<StepId>("mode");
   const [selectedSessionPlayerIds, setSelectedSessionPlayerIds] = useState<PlayerId[]>([]);
   const [newHumanName, setNewHumanName] = useState("");
@@ -94,6 +97,25 @@ export function SetupFlow({ locale }: SetupFlowProps) {
     ],
     [botPlayers, selectedSessionPlayers],
   );
+
+  useEffect(() => {
+    const storedPreferences = readSetupPreferences(createDefaultGameConfigs());
+
+    if (storedPreferences) {
+      setSelectedMode(storedPreferences.selectedMode);
+      setConfigs(storedPreferences.configs);
+    }
+
+    setHasLoadedSetupPreferences(true);
+  }, []);
+
+  useEffect(() => {
+    if (!hasLoadedSetupPreferences) {
+      return;
+    }
+
+    writeSetupPreferences({ selectedMode, configs });
+  }, [configs, hasLoadedSetupPreferences, selectedMode]);
 
   useEffect(() => {
     setSelectedSessionPlayerIds((currentPlayerIds) => currentPlayerIds.filter((playerId) => (
@@ -283,8 +305,13 @@ export function SetupFlow({ locale }: SetupFlowProps) {
   }
 
   return (
-    <main className="min-h-[calc(100dvh-4rem)] overflow-x-hidden bg-transparent px-2 py-2 text-foreground sm:px-6 sm:py-5 lg:px-8">
-      <section className="relative mx-auto flex max-w-6xl flex-col gap-3 sm:gap-4">
+    <main
+      className={cn(
+        "grid min-h-[calc(100dvh-11.25rem)] overflow-x-hidden bg-transparent px-2 py-2 text-foreground sm:px-6 sm:py-5 md:min-h-[calc(100dvh-5rem)] lg:px-8",
+        step === "mode" ? "md:items-center" : "md:items-start",
+      )}
+    >
+      <section className="relative mx-auto flex w-full max-w-6xl flex-col gap-3 sm:gap-4">
         <div className="pointer-events-none absolute -top-24 right-4 -z-10 size-72 rounded-full bg-chart-2/25 blur-3xl" aria-hidden="true" />
         <div className="pointer-events-none absolute top-48 -left-20 -z-10 size-80 rounded-full bg-chart-1/20 blur-3xl" aria-hidden="true" />
 

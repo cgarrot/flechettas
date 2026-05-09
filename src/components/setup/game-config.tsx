@@ -4,6 +4,7 @@ import { SlidersHorizontal } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -194,12 +195,55 @@ export function buildConfigWithPlayers(
 
 function ConfigField({ id, label, description, children }: FieldProps) {
   return (
-    <div className="space-y-2">
+    <div className="space-y-1.5">
       <label htmlFor={id} className="text-sm font-medium">
         {label}
       </label>
       {children}
       {description ? <p className="text-xs leading-5 text-muted-foreground">{description}</p> : null}
+    </div>
+  );
+}
+
+function ToggleGroup<TValue extends string>({
+  id,
+  label,
+  value,
+  options,
+  onValueChange,
+  testId,
+  columns = 2,
+}: Readonly<{
+  id: string;
+  label: string;
+  value: TValue;
+  options: readonly Readonly<{ value: TValue; label: string }>[];
+  onValueChange: (value: TValue) => void;
+  testId: string;
+  columns?: 2 | 3 | 4;
+}>) {
+  const columnClass = columns === 4 ? "grid-cols-2 sm:grid-cols-4" : columns === 3 ? "grid-cols-3" : "grid-cols-2";
+
+  return (
+    <div id={id} className={`grid ${columnClass} gap-1 rounded-xl border border-border/70 bg-background/65 p-1`} role="radiogroup" aria-label={label} data-testid={testId}>
+      {options.map((option) => {
+        const isSelected = option.value === value;
+
+        return (
+          <Button
+            key={option.value}
+            type="button"
+            variant={isSelected ? "default" : "ghost"}
+            size="sm"
+            className="min-h-9 rounded-lg px-2 text-xs font-bold"
+            role="radio"
+            aria-checked={isSelected}
+            onClick={() => onValueChange(option.value)}
+          >
+            {option.label}
+          </Button>
+        );
+      })}
     </div>
   );
 }
@@ -276,17 +320,7 @@ function BooleanSelect({
 }>) {
   const misc = useTranslations("Misc");
 
-  return (
-    <Select value={boolValue(value)} onValueChange={(nextValue) => onValueChange(nextValue === "true")}>
-      <SelectTrigger id={id} data-testid={testId} className="min-h-12 w-full bg-background/65">
-        <SelectValue />
-      </SelectTrigger>
-      <SelectContent>
-        <SelectItem value="true">{misc("yes")}</SelectItem>
-        <SelectItem value="false">{misc("no")}</SelectItem>
-      </SelectContent>
-    </Select>
-  );
+  return <ToggleGroup id={id} label={id} value={boolValue(value)} options={[{ value: "true", label: misc("yes") }, { value: "false", label: misc("no") }]} onValueChange={(nextValue) => onValueChange(nextValue === "true")} testId={testId} />;
 }
 
 function withLegsToWin<TConfig extends GameConfig>(
@@ -358,7 +392,7 @@ export function GameConfigForm({ config, onConfigChange }: GameConfigFormProps) 
                 type="number"
                 min={1}
                 value={legsToWin}
-                className="min-h-12 bg-background/65"
+                className="min-h-10 bg-background/65"
                 onChange={(event) => {
                   onConfigChange(
                     withLegsToWin(
@@ -376,7 +410,7 @@ export function GameConfigForm({ config, onConfigChange }: GameConfigFormProps) 
                 type="number"
                 min={1}
                 value={setsToWin}
-                className="min-h-12 bg-background/65"
+                className="min-h-10 bg-background/65"
                 onChange={(event) => {
                   onConfigChange(
                     withSetsToWin(
@@ -395,19 +429,15 @@ export function GameConfigForm({ config, onConfigChange }: GameConfigFormProps) 
             {config.mode === "x01" ? (
               <>
                 <ConfigField id="config-startingScore" label={gameConfig("startScore")}>
-                  <Select
+                  <ToggleGroup
+                    id="config-startingScore"
+                    label={gameConfig("startScore")}
                     value={String(config.startingScore)}
+                    options={X01_START_SCORES.map((score) => ({ value: String(score), label: String(score) }))}
                     onValueChange={(value) => onConfigChange({ ...config, startingScore: toX01StartScore(value, config.startingScore) })}
-                  >
-                    <SelectTrigger id="config-startingScore" data-testid="config-startingScore" className="min-h-12 w-full bg-background/65">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {X01_START_SCORES.map((score) => (
-                        <SelectItem key={score} value={String(score)}>{score}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    testId="config-startingScore"
+                    columns={3}
+                  />
                 </ConfigField>
                 <ConfigField id="config-doubleIn" label={gameConfig("doubleIn")}>
                   <BooleanSelect id="config-doubleIn" testId="config-doubleIn" value={config.doubleIn} onValueChange={(value) => onConfigChange({ ...config, doubleIn: value })} />
@@ -424,19 +454,19 @@ export function GameConfigForm({ config, onConfigChange }: GameConfigFormProps) 
             {config.mode === "cricket" ? (
               <>
                 <ConfigField id="config-variant" label={gameConfig("variant")}>
-                  <Select
+                  <ToggleGroup
+                    id="config-variant"
+                    label={gameConfig("variant")}
                     value={config.variant}
+                    options={[
+                      { value: "standard", label: gameConfig("standard") },
+                      { value: "cut-throat", label: gameConfig("cutThroat") },
+                      { value: "no-score", label: gameConfig("noScore") },
+                    ]}
                     onValueChange={(value) => onConfigChange({ ...config, variant: toCricketVariant(value, config.variant) })}
-                  >
-                    <SelectTrigger id="config-variant" data-testid="config-variant" className="min-h-12 w-full bg-background/65">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="standard">{gameConfig("standard")}</SelectItem>
-                      <SelectItem value="cut-throat">{gameConfig("cutThroat")}</SelectItem>
-                      <SelectItem value="no-score">{gameConfig("noScore")}</SelectItem>
-                    </SelectContent>
-                  </Select>
+                    testId="config-variant"
+                    columns={3}
+                  />
                 </ConfigField>
                 <ConfigField id="config-scorePoints" label={gameConfig("scorePoints")}>
                   <BooleanSelect id="config-scorePoints" testId="config-scorePoints" value={config.scorePoints} onValueChange={(value) => onConfigChange({ ...config, scorePoints: value })} />
@@ -462,7 +492,7 @@ export function GameConfigForm({ config, onConfigChange }: GameConfigFormProps) 
                     value={String(config.startSegment)}
                     onValueChange={(value) => onConfigChange({ ...config, startSegment: toNumberSegment(value, config.startSegment) })}
                   >
-                    <SelectTrigger id="config-startSegment" data-testid="config-startSegment" className="min-h-12 w-full bg-background/65">
+                    <SelectTrigger id="config-startSegment" data-testid="config-startSegment" className="min-h-10 w-full bg-background/65">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -477,7 +507,7 @@ export function GameConfigForm({ config, onConfigChange }: GameConfigFormProps) 
                     value={String(config.endSegment)}
                     onValueChange={(value) => onConfigChange({ ...config, endSegment: value === "25" ? 25 : toNumberSegment(value, config.endSegment === 25 ? 20 : config.endSegment) })}
                   >
-                    <SelectTrigger id="config-endSegment" data-testid="config-endSegment" className="min-h-12 w-full bg-background/65">
+                    <SelectTrigger id="config-endSegment" data-testid="config-endSegment" className="min-h-10 w-full bg-background/65">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -489,20 +519,20 @@ export function GameConfigForm({ config, onConfigChange }: GameConfigFormProps) 
                   </Select>
                 </ConfigField>
                 <ConfigField id="config-requiredMultiplier" label={gameConfig("requiredMultiplier")}>
-                  <Select
+                  <ToggleGroup
+                    id="config-requiredMultiplier"
+                    label={gameConfig("requiredMultiplier")}
                     value={String(config.requiredMultiplier ?? "open")}
+                    options={[
+                      { value: "open", label: gameConfig("open") },
+                      { value: "1", label: gameConfig("single") },
+                      { value: "2", label: gameConfig("double") },
+                      { value: "3", label: gameConfig("triple") },
+                    ]}
                     onValueChange={(value) => onConfigChange({ ...config, requiredMultiplier: toRequiredMultiplier(value, config.requiredMultiplier ?? "open") })}
-                  >
-                    <SelectTrigger id="config-requiredMultiplier" data-testid="config-requiredMultiplier" className="min-h-12 w-full bg-background/65">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="open">{gameConfig("open")}</SelectItem>
-                      <SelectItem value="1">{gameConfig("single")}</SelectItem>
-                      <SelectItem value="2">{gameConfig("double")}</SelectItem>
-                      <SelectItem value="3">{gameConfig("triple")}</SelectItem>
-                    </SelectContent>
-                  </Select>
+                    testId="config-requiredMultiplier"
+                    columns={4}
+                  />
                 </ConfigField>
                 <ConfigField id="config-includeBull" label={gameConfig("includeBull")}>
                   <BooleanSelect id="config-includeBull" testId="config-includeBull" value={config.includeBull} onValueChange={(value) => onConfigChange({ ...config, includeBull: value })} />
@@ -519,22 +549,18 @@ export function GameConfigForm({ config, onConfigChange }: GameConfigFormProps) 
             {config.mode === "checkout-121" ? (
               <>
                 <ConfigField id="config-dartsPerTarget" label={gameConfig("dartsPerTarget")}>
-                  <Select
+                  <ToggleGroup
+                    id="config-dartsPerTarget"
+                    label={gameConfig("dartsPerTarget")}
                     value={String(config.dartsPerTarget)}
+                    options={CHECKOUT_DARTS.map((count) => ({ value: String(count), label: String(count) }))}
                     onValueChange={(value) => {
                       const parsed = Number.parseInt(value, 10);
                       onConfigChange({ ...config, dartsPerTarget: CHECKOUT_DARTS.includes(parsed as 3 | 6 | 9) ? (parsed as 3 | 6 | 9) : config.dartsPerTarget });
                     }}
-                  >
-                    <SelectTrigger id="config-dartsPerTarget" data-testid="config-dartsPerTarget" className="min-h-12 w-full bg-background/65">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {CHECKOUT_DARTS.map((count) => (
-                        <SelectItem key={count} value={String(count)}>{count}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    testId="config-dartsPerTarget"
+                    columns={3}
+                  />
                 </ConfigField>
                 <ConfigField id="config-successStep" label={gameConfig("successStep")}>
                   <Input
@@ -543,7 +569,7 @@ export function GameConfigForm({ config, onConfigChange }: GameConfigFormProps) 
                     type="number"
                     min={1}
                     value={config.successStep}
-                    className="min-h-12 bg-background/65"
+                    className="min-h-10 bg-background/65"
                     onChange={(event) => onConfigChange({ ...config, successStep: parsePositiveInteger(event.target.value, config.successStep, 1, 25) })}
                   />
                 </ConfigField>
@@ -554,7 +580,7 @@ export function GameConfigForm({ config, onConfigChange }: GameConfigFormProps) 
                     type="number"
                     min={1}
                     value={config.failureStep}
-                    className="min-h-12 bg-background/65"
+                    className="min-h-10 bg-background/65"
                     onChange={(event) => onConfigChange({ ...config, failureStep: parsePositiveInteger(event.target.value, config.failureStep, 1, 25) })}
                   />
                 </ConfigField>
@@ -570,19 +596,15 @@ export function GameConfigForm({ config, onConfigChange }: GameConfigFormProps) 
             {config.mode === "training" ? (
               <>
                 <ConfigField id="config-trainingFocus" label={gameConfig("trainingFocus")}>
-                  <Select
+                  <ToggleGroup
+                    id="config-trainingFocus"
+                    label={gameConfig("trainingFocus")}
                     value={config.focus}
+                    options={TRAINING_FOCUSES.map((focus) => ({ value: focus, label: gameConfig(trainingFocusMessageKeys[focus]) }))}
                     onValueChange={(value) => onConfigChange({ ...config, focus: toTrainingFocus(value, config.focus) })}
-                  >
-                    <SelectTrigger id="config-trainingFocus" data-testid="config-trainingFocus" className="min-h-12 w-full bg-background/65">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {TRAINING_FOCUSES.map((focus) => (
-                        <SelectItem key={focus} value={focus}>{gameConfig(trainingFocusMessageKeys[focus])}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    testId="config-trainingFocus"
+                    columns={3}
+                  />
                 </ConfigField>
                 <ConfigField id="config-rounds" label={gameConfig("rounds")}>
                   <Input
@@ -591,27 +613,23 @@ export function GameConfigForm({ config, onConfigChange }: GameConfigFormProps) 
                     type="number"
                     min={1}
                     value={config.rounds ?? 1}
-                    className="min-h-12 bg-background/65"
+                    className="min-h-10 bg-background/65"
                     onChange={(event) => onConfigChange({ ...config, rounds: parsePositiveInteger(event.target.value, config.rounds ?? 1, 1, 20) })}
                   />
                 </ConfigField>
                 <ConfigField id="config-hitsRequiredToAdvance" label={gameConfig("hitsRequiredToAdvance")}>
-                  <Select
+                  <ToggleGroup
+                    id="config-hitsRequiredToAdvance"
+                    label={gameConfig("hitsRequiredToAdvance")}
                     value={String(config.hitsRequiredToAdvance ?? 1)}
+                    options={["1", "2", "3"].map((count) => ({ value: count, label: count }))}
                     onValueChange={(value) => {
                       const parsed = Number.parseInt(value, 10);
                       onConfigChange({ ...config, hitsRequiredToAdvance: parsed === 1 || parsed === 2 || parsed === 3 ? parsed : 1 });
                     }}
-                  >
-                    <SelectTrigger id="config-hitsRequiredToAdvance" data-testid="config-hitsRequiredToAdvance" className="min-h-12 w-full bg-background/65">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="1">1</SelectItem>
-                      <SelectItem value="2">2</SelectItem>
-                      <SelectItem value="3">3</SelectItem>
-                    </SelectContent>
-                  </Select>
+                    testId="config-hitsRequiredToAdvance"
+                    columns={3}
+                  />
                 </ConfigField>
               </>
             ) : null}
@@ -625,24 +643,20 @@ export function GameConfigForm({ config, onConfigChange }: GameConfigFormProps) 
                     type="number"
                     min={1}
                     value={config.startingLives}
-                    className="min-h-12 bg-background/65"
+                    className="min-h-10 bg-background/65"
                     onChange={(event) => onConfigChange({ ...config, startingLives: parsePositiveInteger(event.target.value, config.startingLives, 1, 20) })}
                   />
                 </ConfigField>
                 <ConfigField id="config-assignment" label={gameConfig("assignment")}>
-                  <Select
+                  <ToggleGroup
+                    id="config-assignment"
+                    label={gameConfig("assignment")}
                     value={config.assignment}
+                    options={KILLER_ASSIGNMENTS.map((assignment) => ({ value: assignment, label: gameConfig(killerAssignmentMessageKeys[assignment]) }))}
                     onValueChange={(value) => onConfigChange({ ...config, assignment: toKillerAssignment(value, config.assignment) })}
-                  >
-                    <SelectTrigger id="config-assignment" data-testid="config-assignment" className="min-h-12 w-full bg-background/65">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {KILLER_ASSIGNMENTS.map((assignment) => (
-                        <SelectItem key={assignment} value={assignment}>{gameConfig(killerAssignmentMessageKeys[assignment])}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    testId="config-assignment"
+                    columns={4}
+                  />
                 </ConfigField>
                 <ConfigField id="config-requiredHitsToBecomeKiller" label={gameConfig("requiredHitsToBecomeKiller")}>
                   <Input
@@ -651,7 +665,7 @@ export function GameConfigForm({ config, onConfigChange }: GameConfigFormProps) 
                     type="number"
                     min={1}
                     value={config.requiredHitsToBecomeKiller}
-                    className="min-h-12 bg-background/65"
+                    className="min-h-10 bg-background/65"
                     onChange={(event) => onConfigChange({ ...config, requiredHitsToBecomeKiller: parsePositiveInteger(event.target.value, config.requiredHitsToBecomeKiller, 1, 5) })}
                   />
                 </ConfigField>

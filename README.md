@@ -1,27 +1,55 @@
 # Fléchettas
 
-Fléchettas is a local-first darts scoring PWA built with Next.js. Shared sessions use a small SQLite database on the server so players can join the same game by code or URL without creating accounts.
+Fléchettas is a fast, local-first darts scoring PWA built for match nights where the phone is the scoreboard and everyone can follow along.
 
-## Getting Started
+It works offline for solo/local play, supports shared sessions without accounts, and keeps the scoring flow focused on the next dart instead of admin screens.
 
-Install dependencies and run the development server:
+## Highlights
+
+- **Local-first scoring**: active games are kept on the device so a refresh does not lose the match.
+- **Shared sessions**: create a short code or invite link so multiple players can join the same table.
+- **Multiple game modes**: X01, Cricket, Shanghai, Killer, Around the Clock, Bobs 27, Checkout 121, and training modes.
+- **PWA-ready**: installable, touch-friendly, responsive, and designed for mobile scoring.
+- **Match history and stats**: save completed games and review player performance later.
+- **Checkout help**: compact finish suggestions appear when an X01 checkout route is available.
+- **No accounts required**: a session code is the capability token for shared play.
+
+## Tech Stack
+
+- **Framework**: Next.js 15, React 19, TypeScript
+- **Styling**: Tailwind CSS, Radix UI primitives
+- **State and storage**: Zustand, Dexie/IndexedDB
+- **Shared sessions**: SQLite with `better-sqlite3`
+- **PWA**: Serwist service worker integration
+
+## Quick Start
 
 ```bash
 pnpm install
 pnpm dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser.
+Open [http://localhost:3000](http://localhost:3000).
 
-By default, local SQLite data is stored in `data/flechettas.sqlite`. You can override it with `SQLITE_PATH` or `DATABASE_PATH`:
+By default, shared-session SQLite data is stored in `data/flechettas.sqlite`. Override it with either `SQLITE_PATH` or `DATABASE_PATH`:
 
 ```bash
 SQLITE_PATH=./data/flechettas.sqlite pnpm dev
 ```
 
-## SQLite deployment notes
+## Useful Commands
 
-Shared sessions are intentionally no-login: the session code is the capability token. Keep deployments single-writer and persistent:
+```bash
+pnpm dev
+pnpm lint
+pnpm exec tsc --noEmit
+pnpm build
+pnpm start
+```
+
+## Deployment Notes
+
+Shared sessions are intentionally no-login: the session code is the access token. For production, keep the SQLite deployment single-writer and persistent:
 
 - Run one Node.js app instance per SQLite database file.
 - Mount a persistent volume for the database directory.
@@ -41,12 +69,8 @@ NIXPACKS_BUILD_CMD=pnpm build && cp -r public .next/standalone/public && mkdir -
 NIXPACKS_START_CMD=node .next/standalone/server.js
 ```
 
-Mount `/data` as a persistent volume before enabling shared sessions in production. Do not scale the app horizontally against the same SQLite file unless a single-writer architecture is added.
+Mount `/data` before enabling shared sessions. Do not scale horizontally against the same SQLite file unless a single-writer architecture is added.
 
-## Verification
+## License
 
-```bash
-pnpm exec tsc --noEmit
-pnpm lint
-pnpm build
-```
+Fléchettas is released under the [MIT License](LICENSE).

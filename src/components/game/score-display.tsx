@@ -146,16 +146,16 @@ export function ScoreDisplay({ className }: ScoreDisplayProps) {
               </Badge>
             </div>
 
-            <div className="grid gap-1.5 sm:max-h-56 sm:gap-2 sm:overflow-y-auto sm:overscroll-y-contain sm:pr-0.5">
+            <div className="grid gap-1.5 sm:overflow-hidden sm:rounded-xl sm:border sm:border-border/70 sm:bg-card/70 sm:gap-0">
               {orderedWaitingPlayers.length > 0 ? orderedWaitingPlayers.map((player, index) => {
                 const primaryMetric = primaryMetricFor(player, (key) => scoring(key));
                 const playerIndex = gameState.players.findIndex((candidate) => candidate.id === player.id);
                 const finishedRank = finishedRankByPlayerId.get(player.id);
 
                 return (
-                  <div key={player.id} className="grid grid-cols-[1.35rem_1fr_auto] items-center gap-1.5 rounded-xl border border-border/70 bg-card/80 px-2 py-1.5 sm:grid-cols-[2rem_1fr_auto] sm:gap-3 sm:px-3 sm:py-2">
+                  <div key={player.id} className="grid grid-cols-[1.35rem_1fr_auto] items-center gap-1.5 rounded-xl border border-border/70 bg-card/80 px-2 py-1.5 sm:grid-cols-[1.75rem_minmax(0,1fr)_auto] sm:gap-2 sm:rounded-none sm:border-x-0 sm:border-t-0 sm:border-b sm:border-border/60 sm:bg-transparent sm:px-3 sm:last:border-b-0">
                     <span className={cn(
-                      "grid h-5 min-w-5 place-items-center rounded-full px-1 text-[0.65rem] font-black sm:h-7 sm:min-w-7 sm:text-xs",
+                      "grid h-5 min-w-5 place-items-center rounded-full px-1 text-[0.65rem] font-black sm:h-6 sm:min-w-6 sm:text-xs",
                       finishedRank
                         ? "bg-primary/20 text-primary"
                         : "bg-muted text-muted-foreground",
@@ -166,7 +166,7 @@ export function ScoreDisplay({ className }: ScoreDisplayProps) {
                       <p className="truncate text-xs font-semibold sm:text-sm">{player.name}</p>
                       <p className="hidden text-[0.68rem] text-muted-foreground sm:block">{primaryMetric.label}</p>
                     </div>
-                    <p className="font-mono text-lg font-black leading-none sm:text-2xl" data-testid={`score-player-${playerIndex + 1}`}>
+                    <p className="font-mono text-lg font-black leading-none sm:text-xl" data-testid={`score-player-${playerIndex + 1}`}>
                       {primaryMetric.value}
                     </p>
                   </div>

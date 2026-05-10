@@ -1,6 +1,7 @@
 "use client";
 
 import { CheckCircle2, Circle, Info, SlidersHorizontal } from "lucide-react";
+import { useState } from "react";
 import { useTranslations } from "next-intl";
 
 import { Badge } from "@/components/ui/badge";
@@ -85,6 +86,9 @@ type FieldProps = Readonly<{
   children: React.ReactNode;
   description?: string;
 }>;
+
+const compactInputClassName = "h-9 min-h-0 bg-background/65 px-2 py-1 text-sm";
+const compactSelectTriggerClassName = "h-9 min-h-0 w-full bg-background/65 px-2 py-1 text-sm data-[size=default]:min-h-9 data-[size=sm]:min-h-9";
 
 function defaultMatchFormat(): MatchFormat {
   return { legsToWin: 1, setsToWin: 1 };
@@ -194,16 +198,32 @@ export function buildConfigWithPlayers(
 }
 
 function ConfigField({ id, label, description, children }: FieldProps) {
+  const [isHelpOpen, setIsHelpOpen] = useState(false);
+
   return (
-    <div className="space-y-1.5">
-      <label htmlFor={id} className="text-sm font-medium">
-        {label}
-      </label>
+    <div className="relative space-y-1">
+      <div className="flex min-h-7 items-center justify-between gap-2">
+        <label htmlFor={id} className="min-w-0 truncate text-xs font-semibold">
+          {label}
+        </label>
+        {description ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="size-7 shrink-0 rounded-full text-primary hover:bg-primary/10"
+            aria-label={description}
+            aria-expanded={isHelpOpen}
+            onClick={() => setIsHelpOpen((current) => !current)}
+          >
+            <Info className="size-3.5" aria-hidden="true" />
+          </Button>
+        ) : null}
+      </div>
       {children}
-      {description ? (
-        <p className="flex items-start gap-1.5 text-xs leading-4 text-muted-foreground">
-          <Info className="mt-0.5 size-3 shrink-0 text-primary" aria-hidden="true" />
-          <span>{description}</span>
+      {description && isHelpOpen ? (
+        <p className="absolute right-0 z-20 mt-1 max-w-[min(20rem,calc(100vw-3rem))] rounded-xl border border-primary/25 bg-popover px-3 py-2 text-[0.68rem] leading-4 text-popover-foreground shadow-xl shadow-primary/10">
+          {description}
         </p>
       ) : null}
     </div>
@@ -230,7 +250,7 @@ function ToggleGroup<TValue extends string>({
   const columnClass = columns === 4 ? "grid-cols-2 sm:grid-cols-4" : columns === 3 ? "grid-cols-3" : "grid-cols-2";
 
   return (
-    <div id={id} className={`grid ${columnClass} gap-1 rounded-xl border border-border/70 bg-background/65 p-1`} role="radiogroup" aria-label={label} data-testid={testId}>
+    <div id={id} className={`grid ${columnClass} gap-1 rounded-lg border border-border/70 bg-background/65 p-1`} role="radiogroup" aria-label={label} data-testid={testId}>
       {options.map((option) => {
         const isSelected = option.value === value;
 
@@ -240,7 +260,7 @@ function ToggleGroup<TValue extends string>({
             type="button"
             variant={isSelected ? "default" : "ghost"}
             size="sm"
-            className="min-h-11 rounded-lg px-2 text-xs font-bold"
+            className="min-h-9 rounded-md px-1.5 text-[0.68rem] font-bold"
             role="radio"
             aria-checked={isSelected}
             onClick={() => onValueChange(option.value)}
@@ -331,7 +351,7 @@ function BooleanSelect({
       type="button"
       variant={isPressed ? "default" : "outline"}
       size="sm"
-      className="min-h-11 w-full justify-start rounded-xl px-3 text-xs font-bold"
+      className="min-h-9 w-full justify-start rounded-lg px-2 text-[0.68rem] font-bold"
       data-testid={testId}
       aria-pressed={isPressed}
       aria-label={`${label}: ${stateLabel}`}
@@ -403,8 +423,8 @@ export function GameConfigForm({ config, onConfigChange }: GameConfigFormProps) 
           </CardTitle>
           <CardDescription className="text-xs">{setup("modeConfigDescription")}</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4 p-3 pt-0">
-          <div className="grid gap-3 sm:grid-cols-2">
+        <CardContent className="space-y-3 p-3 pt-0">
+          <div className="grid grid-cols-2 gap-2">
             <ConfigField id="config-legsToWin" label={gameConfig("legsToWin")} description={gameConfig("help.legsToWin")}>
               <Input
                 id="config-legsToWin"
@@ -412,7 +432,7 @@ export function GameConfigForm({ config, onConfigChange }: GameConfigFormProps) 
                 type="number"
                 min={1}
                 value={legsToWin}
-                className="min-h-11 bg-background/65"
+                className={compactInputClassName}
                 onChange={(event) => {
                   onConfigChange(
                     withLegsToWin(
@@ -430,7 +450,7 @@ export function GameConfigForm({ config, onConfigChange }: GameConfigFormProps) 
                 type="number"
                 min={1}
                 value={setsToWin}
-                className="min-h-11 bg-background/65"
+                className={compactInputClassName}
                 onChange={(event) => {
                   onConfigChange(
                     withSetsToWin(
@@ -445,7 +465,7 @@ export function GameConfigForm({ config, onConfigChange }: GameConfigFormProps) 
 
           <Separator />
 
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid grid-cols-2 gap-2">
             {config.mode === "x01" ? (
               <>
                 <ConfigField id="config-startingScore" label={gameConfig("startScore")} description={gameConfig("help.startScore")}>
@@ -498,7 +518,7 @@ export function GameConfigForm({ config, onConfigChange }: GameConfigFormProps) 
                     type="number"
                     min={0}
                     value={config.pointsRequiredToWin ?? 0}
-                    className="min-h-12 bg-background/65"
+                    className={compactInputClassName}
                     onChange={(event) => onConfigChange({ ...config, pointsRequiredToWin: parsePositiveInteger(event.target.value, 0, 0, 999) })}
                   />
                 </ConfigField>
@@ -512,7 +532,7 @@ export function GameConfigForm({ config, onConfigChange }: GameConfigFormProps) 
                     value={String(config.startSegment)}
                     onValueChange={(value) => onConfigChange({ ...config, startSegment: toNumberSegment(value, config.startSegment) })}
                   >
-                    <SelectTrigger id="config-startSegment" data-testid="config-startSegment" className="min-h-11 w-full bg-background/65">
+                    <SelectTrigger id="config-startSegment" data-testid="config-startSegment" className={compactSelectTriggerClassName}>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -527,7 +547,7 @@ export function GameConfigForm({ config, onConfigChange }: GameConfigFormProps) 
                     value={String(config.endSegment)}
                     onValueChange={(value) => onConfigChange({ ...config, endSegment: value === "25" ? 25 : toNumberSegment(value, config.endSegment === 25 ? 20 : config.endSegment) })}
                   >
-                    <SelectTrigger id="config-endSegment" data-testid="config-endSegment" className="min-h-11 w-full bg-background/65">
+                    <SelectTrigger id="config-endSegment" data-testid="config-endSegment" className={compactSelectTriggerClassName}>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -589,7 +609,7 @@ export function GameConfigForm({ config, onConfigChange }: GameConfigFormProps) 
                     type="number"
                     min={1}
                     value={config.successStep}
-                    className="min-h-11 bg-background/65"
+                    className={compactInputClassName}
                     onChange={(event) => onConfigChange({ ...config, successStep: parsePositiveInteger(event.target.value, config.successStep, 1, 25) })}
                   />
                 </ConfigField>
@@ -600,7 +620,7 @@ export function GameConfigForm({ config, onConfigChange }: GameConfigFormProps) 
                     type="number"
                     min={1}
                     value={config.failureStep}
-                    className="min-h-11 bg-background/65"
+                    className={compactInputClassName}
                     onChange={(event) => onConfigChange({ ...config, failureStep: parsePositiveInteger(event.target.value, config.failureStep, 1, 25) })}
                   />
                 </ConfigField>
@@ -633,7 +653,7 @@ export function GameConfigForm({ config, onConfigChange }: GameConfigFormProps) 
                     type="number"
                     min={1}
                     value={config.rounds ?? 1}
-                    className="min-h-11 bg-background/65"
+                    className={compactInputClassName}
                     onChange={(event) => onConfigChange({ ...config, rounds: parsePositiveInteger(event.target.value, config.rounds ?? 1, 1, 20) })}
                   />
                 </ConfigField>
@@ -663,7 +683,7 @@ export function GameConfigForm({ config, onConfigChange }: GameConfigFormProps) 
                     type="number"
                     min={1}
                     value={config.startingLives}
-                    className="min-h-11 bg-background/65"
+                    className={compactInputClassName}
                     onChange={(event) => onConfigChange({ ...config, startingLives: parsePositiveInteger(event.target.value, config.startingLives, 1, 20) })}
                   />
                 </ConfigField>
@@ -685,7 +705,7 @@ export function GameConfigForm({ config, onConfigChange }: GameConfigFormProps) 
                     type="number"
                     min={1}
                     value={config.requiredHitsToBecomeKiller}
-                    className="min-h-11 bg-background/65"
+                    className={compactInputClassName}
                     onChange={(event) => onConfigChange({ ...config, requiredHitsToBecomeKiller: parsePositiveInteger(event.target.value, config.requiredHitsToBecomeKiller, 1, 5) })}
                   />
                 </ConfigField>

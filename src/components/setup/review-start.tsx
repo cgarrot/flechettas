@@ -1,10 +1,11 @@
 "use client";
 
-import { ArrowLeft, Play } from "lucide-react";
+import { ArrowLeft, Play, Shuffle } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -28,6 +29,9 @@ import type { BotLevel, GameConfig, GameMode, PlayerDef, PlayerId, SharedSession
 const MAX_HUMAN_PLAYERS = 20;
 const MAX_TOTAL_PLAYERS = 20;
 const DEFAULT_BOT_LEVEL = 1 satisfies BotLevel;
+const ORDER_DRAW_STEPS = 9;
+const ORDER_DRAW_STEP_MS = 105;
+const ORDER_DRAW_SETTLE_MS = 650;
 type StepId = "mode" | "setup";
 type Locale = "fr" | "en";
 
@@ -59,6 +63,34 @@ function isSharedSessionPlayer(player: SharedSessionPlayer | undefined): player 
   return player !== undefined;
 }
 
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, ms);
+  });
+}
+
+function randomIndex(maxExclusive: number): number {
+  if (maxExclusive <= 1) {
+    return 0;
+  }
+
+  const values = new Uint32Array(1);
+  window.crypto.getRandomValues(values);
+
+  return values[0] % maxExclusive;
+}
+
+function shufflePlayers(players: readonly PlayerDef[]): PlayerDef[] {
+  const shuffled = [...players];
+
+  for (let index = shuffled.length - 1; index > 0; index -= 1) {
+    const swapIndex = randomIndex(index + 1);
+    [shuffled[index], shuffled[swapIndex]] = [shuffled[swapIndex], shuffled[index]];
+  }
+
+  return shuffled;
+}
+
 export function SetupFlow({ locale }: SetupFlowProps) {
   const router = useRouter();
   const setup = useTranslations("Setup");
@@ -80,6 +112,7 @@ export function SetupFlow({ locale }: SetupFlowProps) {
   const [botPlayers, setBotPlayers] = useState<PlayerDef[]>([]);
   const [playerValidationMessage, setPlayerValidationMessage] = useState<string | null>(null);
   const [startValidationMessage, setStartValidationMessage] = useState<string | null>(null);
+  const [orderDrawPlayers, setOrderDrawPlayers] = useState<PlayerDef[] | null>(null);
   const [isStarting, setIsStarting] = useState(false);
   const selectedConfig = configs[selectedMode];
   const modeLabel = modes(modeMessageKeys[selectedMode]);
@@ -288,18 +321,34 @@ export function SetupFlow({ locale }: SetupFlowProps) {
       return;
     }
 
-    const configWithPlayers = buildConfigWithPlayers(selectedConfig, validation.players);
-
     setStartValidationMessage(null);
     setIsStarting(true);
 
     try {
-      await newGame(configWithPlayers, validation.players);
+      let finalPlayers = validation.players;
+
+      if (validation.players.length > 1) {
+        setOrderDrawPlayers(validation.players);
+
+        for (let stepIndex = 0; stepIndex < ORDER_DRAW_STEPS; stepIndex += 1) {
+          await sleep(ORDER_DRAW_STEP_MS);
+          setOrderDrawPlayers(shufflePlayers(validation.players));
+        }
+
+        finalPlayers = shufflePlayers(validation.players);
+        setOrderDrawPlayers(finalPlayers);
+        await sleep(ORDER_DRAW_SETTLE_MS);
+      }
+
+      const configWithPlayers = buildConfigWithPlayers(selectedConfig, finalPlayers);
+
+      await newGame(configWithPlayers, finalPlayers);
       router.push(gameRoute);
     } catch {
       setStartValidationMessage(setup("errors.startFailed"));
       setStep("setup");
     } finally {
+      setOrderDrawPlayers(null);
       setIsStarting(false);
     }
   }
@@ -396,6 +445,39 @@ export function SetupFlow({ locale }: SetupFlowProps) {
                 </div>
               </CardContent>
             </Card>
+
+            {orderDrawPlayers ? (
+              <div className="fixed inset-0 z-[120] grid place-items-center bg-background/85 p-4 backdrop-blur-md" role="status" aria-live="polite">
+                <Card className="w-full max-w-md border-primary/30 bg-card/95 py-0 shadow-2xl shadow-primary/20">
+                  <CardContent className="space-y-4 p-4 sm:p-5">
+                    <div className="space-y-2 text-center">
+                      <Badge variant="outline" className="mx-auto bg-background/70 uppercase tracking-[0.18em] text-primary">
+                        <Shuffle className="size-3" aria-hidden="true" />
+                        {setup("orderDrawKicker")}
+                      </Badge>
+                      <div className="space-y-1">
+                        <h3 className="text-2xl font-black tracking-tight">{setup("orderDrawTitle")}</h3>
+                        <p className="text-sm text-muted-foreground">{setup("orderDrawDescription")}</p>
+                      </div>
+                    </div>
+
+                    <ol className="grid gap-2">
+                      {orderDrawPlayers.map((player, index) => (
+                        <li
+                          key={`${player.id}-${index}`}
+                          className="grid grid-cols-[2.5rem_1fr] items-center gap-3 rounded-2xl border border-border/70 bg-background/70 p-2"
+                        >
+                          <span className="grid size-10 place-items-center rounded-full bg-primary text-sm font-black text-primary-foreground">
+                            {index + 1}
+                          </span>
+                          <span className="min-w-0 truncate text-lg font-black">{player.name}</span>
+                        </li>
+                      ))}
+                    </ol>
+                  </CardContent>
+                </Card>
+              </div>
+            ) : null}
           </>
         )}
       </section>

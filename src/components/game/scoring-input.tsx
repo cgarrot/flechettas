@@ -104,11 +104,11 @@ export function ScoringInput({ className, editingDartIndex = null, onEditComplet
   return (
     <Card className={cn("overflow-hidden border-primary/20 bg-card/95 py-0 shadow-2xl shadow-primary/10", className)}>
       <CardContent className="space-y-2 p-2 sm:space-y-4 sm:p-5">
-        <div className="grid grid-cols-[2.25rem_1fr_1fr_1fr] gap-1.5" aria-label={scoring("multiplier")}>
+        <div className="grid h-11 grid-cols-[2.25rem_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)] gap-1.5" aria-label={scoring("multiplier")}>
           <Button
             type="button"
             variant="outline"
-            className="min-h-9 touch-manipulation rounded-xl border-secondary/30 px-1"
+            className="h-full min-h-0 touch-manipulation rounded-xl border-secondary/30 px-1"
             data-testid="undo-dart"
             aria-label={scoring("undo")}
             disabled={!hasDartEvents || isSubmitting}
@@ -128,7 +128,7 @@ export function ScoringInput({ className, editingDartIndex = null, onEditComplet
                 type="button"
                 variant={isSelected ? "default" : "outline"}
                 className={cn(
-                  "min-h-11 touch-manipulation rounded-xl px-2 text-base font-black",
+                  "h-full min-h-0 min-w-0 touch-manipulation rounded-xl px-1.5 text-sm font-black leading-none sm:px-2 sm:text-base",
                   isSelected && option.id === "d" && "border-secondary/60 bg-secondary text-secondary-foreground shadow-secondary/25 hover:bg-secondary/90",
                   isSelected && option.id === "t" && "border-accent/60 bg-accent text-accent-foreground shadow-accent/25 hover:bg-accent/90",
                 )}
@@ -138,8 +138,8 @@ export function ScoringInput({ className, editingDartIndex = null, onEditComplet
                 disabled={isSubmitting}
                 onClick={() => selectMultiplier(option.value)}
               >
-                <span>{scoring(option.shortKey)}</span>
-                <span className="text-[0.62rem] opacity-80">{scoring(option.labelKey)}</span>
+                <span className="shrink-0">{scoring(option.shortKey)}</span>
+                <span className="min-w-0 truncate text-[0.58rem] opacity-80 sm:text-[0.62rem]">{scoring(option.labelKey)}</span>
               </Button>
             );
           })}

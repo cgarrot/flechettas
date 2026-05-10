@@ -179,7 +179,7 @@ export function ScoreDisplay({ className }: ScoreDisplayProps) {
             </div>
           </div>
 
-          <div className="relative min-w-0 overflow-hidden rounded-2xl border border-primary/50 bg-[radial-gradient(circle_at_top_right,rgba(52,211,153,0.16),transparent_46%),linear-gradient(135deg,rgba(34,197,94,0.14),rgba(4,47,32,0.86))] p-2 shadow-2xl shadow-primary/15 sm:p-4">
+          <div className="relative min-w-0 overflow-hidden rounded-2xl border border-primary/45 bg-primary/10 p-2 shadow-2xl shadow-primary/15 sm:p-4">
             <div className="pointer-events-none absolute -right-10 -top-10 size-28 rounded-full bg-primary/15 blur-3xl" aria-hidden="true" />
             <div className="relative flex items-start justify-between gap-2">
               <div className="min-w-0">

@@ -293,7 +293,7 @@ export function GameScreen({ locale }: GameScreenProps) {
       className={cn(
         "bg-transparent px-2 pt-1 text-foreground",
         "max-h-[calc(100dvh-3.75rem-env(safe-area-inset-top))] min-h-[calc(100dvh-3.75rem-env(safe-area-inset-top))]",
-        "overflow-y-auto overflow-x-hidden overscroll-y-contain pb-[calc(0.75rem+env(safe-area-inset-bottom))]",
+        "overflow-y-auto overflow-x-hidden overscroll-y-contain pb-[calc(0.75rem+env(safe-area-inset-bottom))] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
         "sm:max-h-none sm:min-h-[calc(100dvh-4rem)] sm:overflow-x-hidden sm:overflow-y-visible sm:px-6 sm:py-6 sm:pb-6 md:pb-0 lg:px-8",
       )}
     >

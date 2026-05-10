@@ -10,7 +10,7 @@ import { dartScore, formatDart } from "@/engine";
 import { cn } from "@/lib/utils";
 import { useGameStore } from "@/store";
 
-import type { Dart, DartIndex, PlayerId } from "@/types";
+import type { Dart, DartIndex, PlayerId, PlayerState } from "@/types";
 
 export type BotPlaybackState = Readonly<{
   playerId: PlayerId;
@@ -27,6 +27,32 @@ type TurnIndicatorProps = Readonly<{
 }>;
 
 const DART_SLOT_INDEXES = [0, 1, 2] as const satisfies readonly DartIndex[];
+
+type TurnMetric = Readonly<{
+  label: string;
+  value: string;
+}>;
+
+function secondaryMetricFor(player: PlayerState, label: (key: string) => string): TurnMetric {
+  switch (player.modeState.mode) {
+    case "x01":
+      return { label: label("dartsInLeg"), value: String(player.modeState.dartsThrownInLeg) };
+    case "cricket":
+      return { label: label("closedTargets"), value: String(player.modeState.closedTargets.length) };
+    case "around-the-clock":
+      return { label: label("hits"), value: String(player.modeState.hits) };
+    case "bobs-27":
+      return { label: label("currentDouble"), value: String(player.modeState.currentDouble) };
+    case "checkout-121":
+      return { label: label("targetScore"), value: String(player.modeState.currentTargetScore) };
+    case "shanghai":
+      return { label: label("round"), value: String(player.modeState.round) };
+    case "training":
+      return { label: label("attempts"), value: String(player.modeState.attempts) };
+    case "killer":
+      return { label: label("kills"), value: String(player.modeState.kills) };
+  }
+}
 
 function nextDartNumber(currentTurnLength: number): number {
   return Math.min(3, currentTurnLength + 1);
@@ -59,6 +85,8 @@ export function TurnIndicator({
     );
   }
 
+  const turnMetric = secondaryMetricFor(activePlayer, (key) => scoring(key));
+
   return (
     <Card className={cn("overflow-hidden border-primary/20 bg-card/95 py-0 shadow-2xl shadow-primary/10", className)} data-testid="turn-indicator">
       <CardContent className="space-y-2 p-2 sm:space-y-4 sm:p-5">
@@ -66,6 +94,9 @@ export function TurnIndicator({
           <div className="min-w-0">
             <p className="text-[0.68rem] font-bold uppercase tracking-[0.16em] text-primary sm:text-xs">{game("turnKicker")}</p>
             <p className="truncate text-lg font-black tracking-tight sm:text-2xl">{activePlayer.name}</p>
+            <p className="truncate text-[0.62rem] font-medium text-muted-foreground sm:text-xs">
+              {turnMetric.label}: {turnMetric.value} · {scoring("legSetCounter", { leg: gameState.currentLeg, set: gameState.currentSet })} · {scoring("round")} {gameState.currentRound}
+            </p>
           </div>
           <div className="grid justify-items-end gap-1">
             <Badge variant={isBotTurn ? "secondary" : "default"} className="text-[0.65rem] sm:text-xs">

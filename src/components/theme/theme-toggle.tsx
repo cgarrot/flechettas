@@ -7,7 +7,7 @@ import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 
-const THEME_NAMES = ["dark", "light", "brass", "club", "chalk"] as const;
+const THEME_NAMES = ["dark", "light", "brass", "club", "chalk", "rose", "ocean", "ember", "violet"] as const;
 
 type ThemeName = (typeof THEME_NAMES)[number];
 
@@ -17,6 +17,10 @@ const THEME_LABEL_KEYS = {
   brass: "themeBrass",
   club: "themeClub",
   chalk: "themeChalk",
+  rose: "themeRose",
+  ocean: "themeOcean",
+  ember: "themeEmber",
+  violet: "themeViolet",
 } as const satisfies Record<ThemeName, string>;
 
 function isThemeName(theme: string | undefined): theme is ThemeName {
@@ -30,7 +34,7 @@ function nextThemeFor(theme: ThemeName): ThemeName {
 }
 
 function iconForTheme(theme: ThemeName) {
-  if (theme === "light" || theme === "chalk") {
+  if (theme === "light" || theme === "chalk" || theme === "rose") {
     return Sun;
   }
 

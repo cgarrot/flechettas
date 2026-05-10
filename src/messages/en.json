@@ -53,6 +53,12 @@
     "cancelAbandon": "Keep game",
     "confirmAbandon": "Abandon game",
     "abandoningGame": "Clearing game",
+    "leaveSharedActiveGame": "Leave on this device",
+    "leaveSharedActiveGameA11y": "Leave shared {mode} game on this device",
+    "abandonSharedDialogTitleForGame": "Leave this shared {mode} game on this device?",
+    "abandonSharedDialogDescription": "Other players can keep playing. This hides the match from your home screen and removes its local copy here. Your shared session stays active—this does not end the match for everyone.",
+    "confirmAbandonShared": "Leave game",
+    "leavingSharedGame": "Leaving…",
     "activeLoadFailed": "The active game could not be loaded.",
     "activeActionFailed": "The active game action failed. Try again.",
     "activeGameNotFound": "That active game is no longer saved on this device."
@@ -69,13 +75,20 @@
     "themeBrass": "Brass",
     "themeClub": "Club",
     "themeChalk": "Chalk",
+    "themeRose": "Rose",
+    "themeOcean": "Ocean",
+    "themeEmber": "Ember",
+    "themeViolet": "Violet",
     "switchToLight": "Switch to light mode",
     "switchToDark": "Switch to dark mode",
     "darkMode": "Dark",
     "lightMode": "Light",
     "home": "Home",
+    "homeShort": "Home",
     "newGame": "New game",
-    "history": "History"
+    "newGameShort": "Play",
+    "history": "History",
+    "historyShort": "History"
   },
   "Modes": {
     "x01": "X01",
@@ -188,6 +201,7 @@
     "matchCompleteKicker": "Match complete",
     "matchWinner": "{player} wins",
     "matchCompleteDescription": "Review the match summary, then save the result and either play the same setup again or return home.",
+    "matchFinalStandingsDescription": "Every active player has finished. The headline shows the last player who checked out; the stats below cover the whole table.",
     "winnerFallback": "Winner",
     "statsSummaryTitle": "Stats summary",
     "playerCount": "{count, plural, one {# player} other {# players}}",
@@ -199,7 +213,9 @@
     "matchHome": "Save and go home",
     "matchSaving": "Saving",
     "matchRematch": "Rematch",
-    "matchContinue": "Continue for others"
+    "matchContinue": "Continue for others",
+    "matchContinueUnavailable": "Could not continue — no players are left to play.",
+    "matchContinueUnavailableHint": "Everyone has already won this match. Save the result, go home, or start a rematch."
   },
   "Session": {
     "promptTitle": "Share this match table",
@@ -512,6 +528,7 @@
     "delete": "Delete",
     "confirm": "Confirm",
     "cancel": "Cancel",
+    "close": "Close",
     "yes": "Yes",
     "no": "No",
     "language": "Language",

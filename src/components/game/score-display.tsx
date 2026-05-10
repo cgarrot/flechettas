@@ -1,7 +1,7 @@
 "use client";
 
-import { Activity, Crown } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { Activity, Crown, Sparkles } from "lucide-react";
+import { useLocale, useTranslations } from "next-intl";
 
 import { Badge } from "@/components/ui/badge";
 import {
@@ -10,6 +10,7 @@ import {
   CardDescription,
   CardTitle,
 } from "@/components/ui/card";
+import { formatDart, getCheckoutSuggestions } from "@/engine";
 import { cn } from "@/lib/utils";
 import { useGameStore } from "@/store";
 
@@ -45,34 +46,42 @@ function primaryMetricFor(player: PlayerState, label: (key: string) => string): 
   }
 }
 
-function secondaryMetricFor(player: PlayerState, label: (key: string) => string): PrimaryMetric {
-  switch (player.modeState.mode) {
-    case "x01":
-      return { label: label("dartsInLeg"), value: String(player.modeState.dartsThrownInLeg) };
-    case "cricket":
-      return { label: label("closedTargets"), value: String(player.modeState.closedTargets.length) };
-    case "around-the-clock":
-      return { label: label("hits"), value: String(player.modeState.hits) };
-    case "bobs-27":
-      return { label: label("currentDouble"), value: String(player.modeState.currentDouble) };
-    case "checkout-121":
-      return { label: label("targetScore"), value: String(player.modeState.currentTargetScore) };
-    case "shanghai":
-      return { label: label("round"), value: String(player.modeState.round) };
-    case "training":
-      return { label: label("attempts"), value: String(player.modeState.attempts) };
-    case "killer":
-      return { label: label("kills"), value: String(player.modeState.kills) };
-  }
-}
-
 function isPlayerState(player: PlayerState | undefined): player is PlayerState {
   return player !== undefined;
 }
 
+function routeLabel(route: ReturnType<typeof getCheckoutSuggestions>[number]): string {
+  return route.map(formatDart).join(" · ");
+}
+
+function ordinalLabel(rank: number, locale: string): string {
+  if (locale === "fr") {
+    return rank === 1 ? "1er" : `${rank}e`;
+  }
+
+  const tens = rank % 100;
+
+  if (tens >= 11 && tens <= 13) {
+    return `${rank}th`;
+  }
+
+  switch (rank % 10) {
+    case 1:
+      return `${rank}st`;
+    case 2:
+      return `${rank}nd`;
+    case 3:
+      return `${rank}rd`;
+    default:
+      return `${rank}th`;
+  }
+}
+
 export function ScoreDisplay({ className }: ScoreDisplayProps) {
+  const locale = useLocale();
   const scoring = useTranslations("Scoring");
   const gameState = useGameStore((state) => state.gameState);
+  const eventLog = useGameStore((state) => state.eventLog);
 
   if (!gameState) {
     return (
@@ -107,7 +116,16 @@ export function ScoreDisplay({ className }: ScoreDisplayProps) {
       .filter(isPlayerState)
     : gameState.players.filter((player) => player.id !== activePlayer.id);
   const activePrimaryMetric = primaryMetricFor(activePlayer, (key) => scoring(key));
-  const activeSecondaryMetric = secondaryMetricFor(activePlayer, (key) => scoring(key));
+  const checkoutRoutes = activePlayer.modeState.mode === "x01"
+    ? getCheckoutSuggestions(activePlayer.modeState.remainingScore).slice(0, 2)
+    : [];
+  const finishedRankByPlayerId = new Map<string, number>();
+
+  for (const event of eventLog) {
+    if (event.type === "match_won" && !finishedRankByPlayerId.has(event.playerId)) {
+      finishedRankByPlayerId.set(event.playerId, finishedRankByPlayerId.size + 1);
+    }
+  }
 
   return (
     <section className={cn("space-y-1.5 sm:space-y-4", className)} aria-labelledby="score-display-title">
@@ -128,15 +146,21 @@ export function ScoreDisplay({ className }: ScoreDisplayProps) {
               </Badge>
             </div>
 
-            <div className="grid max-h-36 gap-1.5 overflow-y-auto pr-0.5 sm:max-h-56 sm:gap-2">
+            <div className="grid gap-1.5 sm:max-h-56 sm:gap-2 sm:overflow-y-auto sm:overscroll-y-contain sm:pr-0.5">
               {orderedWaitingPlayers.length > 0 ? orderedWaitingPlayers.map((player, index) => {
                 const primaryMetric = primaryMetricFor(player, (key) => scoring(key));
                 const playerIndex = gameState.players.findIndex((candidate) => candidate.id === player.id);
+                const finishedRank = finishedRankByPlayerId.get(player.id);
 
                 return (
                   <div key={player.id} className="grid grid-cols-[1.35rem_1fr_auto] items-center gap-1.5 rounded-xl border border-border/70 bg-card/80 px-2 py-1.5 sm:grid-cols-[2rem_1fr_auto] sm:gap-3 sm:px-3 sm:py-2">
-                    <span className="grid size-5 place-items-center rounded-full bg-muted text-[0.65rem] font-black text-muted-foreground sm:size-7 sm:text-xs">
-                      {index + 1}
+                    <span className={cn(
+                      "grid h-5 min-w-5 place-items-center rounded-full px-1 text-[0.65rem] font-black sm:h-7 sm:min-w-7 sm:text-xs",
+                      finishedRank
+                        ? "bg-primary/20 text-primary"
+                        : "bg-muted text-muted-foreground",
+                    )}>
+                      {finishedRank ? ordinalLabel(finishedRank, locale) : index + 1}
                     </span>
                     <div className="min-w-0">
                       <p className="truncate text-xs font-semibold sm:text-sm">{player.name}</p>
@@ -155,50 +179,46 @@ export function ScoreDisplay({ className }: ScoreDisplayProps) {
             </div>
           </div>
 
-          <div className="min-w-0 rounded-2xl border border-primary/50 bg-primary/15 p-2 shadow-2xl shadow-primary/15 sm:p-5">
-            <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0 space-y-1">
-                <Badge variant="default" className="text-[0.62rem] uppercase tracking-[0.14em] sm:text-xs">
+          <div className="relative min-w-0 overflow-hidden rounded-2xl border border-primary/50 bg-[radial-gradient(circle_at_top_right,rgba(52,211,153,0.16),transparent_46%),linear-gradient(135deg,rgba(34,197,94,0.14),rgba(4,47,32,0.86))] p-2 shadow-2xl shadow-primary/15 sm:p-4">
+            <div className="pointer-events-none absolute -right-10 -top-10 size-28 rounded-full bg-primary/15 blur-3xl" aria-hidden="true" />
+            <div className="relative flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <Badge variant="default" className="text-[0.62rem] uppercase tracking-[0.14em] shadow-lg shadow-primary/20 sm:text-xs">
                   <Crown className="size-3" aria-hidden="true" />
                   {scoring("nowPlaying")}
                 </Badge>
-                <CardTitle className="truncate text-xl font-black tracking-tight sm:text-4xl">
+                <CardTitle className="mt-1 truncate text-xl font-black tracking-tight sm:text-3xl">
                   {activePlayer.name}
                 </CardTitle>
-                <CardDescription className="text-[0.68rem] sm:text-sm">
+                <CardDescription className="text-[0.65rem] sm:text-xs">
                   {activePlayer.isBot ? scoring("botPlayer") : scoring("humanPlayer")}
                 </CardDescription>
               </div>
-              <Badge variant="secondary" className="text-[0.62rem] sm:hidden">
+              <Badge variant="secondary" className="shrink-0 bg-destructive text-[0.62rem] text-destructive-foreground shadow-lg shadow-destructive/20 sm:text-xs">
                 {scoring("nextDart", { current: Math.min(3, activePlayer.currentTurn.length + 1), total: 3 })}
               </Badge>
             </div>
 
-            <div className="mt-2 grid gap-2 sm:mt-5 sm:gap-3">
+            <div className="relative mt-2 grid gap-1.5 sm:mt-3 sm:gap-2">
               <div>
                 <p className="text-[0.62rem] font-bold uppercase tracking-[0.12em] text-muted-foreground sm:text-sm">{activePrimaryMetric.label}</p>
                 <p
-                  className="font-mono text-6xl font-black leading-none tracking-tight text-foreground min-[380px]:text-7xl sm:text-8xl"
+                  className="text-center font-mono text-6xl font-black leading-none tracking-tight text-foreground min-[380px]:text-7xl sm:text-7xl"
                   data-testid={`score-player-${activePlayerIndex + 1}`}
                 >
                   {activePrimaryMetric.value}
                 </p>
               </div>
 
-              <div className="grid grid-cols-2 gap-1.5 sm:gap-3">
-                <div className="rounded-xl border border-border/70 bg-background/70 px-2 py-1.5 sm:rounded-2xl sm:px-3 sm:py-2">
-                  <p className="truncate text-[0.62rem] text-muted-foreground sm:text-xs">{activeSecondaryMetric.label}</p>
-                  <p className="font-mono text-base font-black sm:text-xl">{activeSecondaryMetric.value}</p>
+              {checkoutRoutes.length > 0 ? (
+                <div className="flex min-w-0 items-center justify-center gap-2 rounded-xl border border-primary/30 bg-background/70 px-2 py-1.5">
+                  <Sparkles className="size-3 shrink-0 text-primary" aria-hidden="true" />
+                  <span className="min-w-0 truncate font-mono text-sm font-black tracking-tight sm:text-base">
+                    {routeLabel(checkoutRoutes[0])}
+                  </span>
                 </div>
-                <div className="rounded-xl border border-border/70 bg-background/70 px-2 py-1.5 sm:rounded-2xl sm:px-3 sm:py-2">
-                  <p className="truncate text-[0.62rem] text-muted-foreground sm:text-xs">
-                    {scoring("legSetCounter", { leg: gameState.currentLeg, set: gameState.currentSet })}
-                  </p>
-                  <p className="font-mono text-base font-black sm:text-xl">
-                    {scoring("round")} {gameState.currentRound}
-                  </p>
-                </div>
-              </div>
+              ) : null}
+
             </div>
           </div>
         </CardContent>

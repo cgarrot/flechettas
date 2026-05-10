@@ -164,11 +164,7 @@ function assertValidPlayers(players: readonly PlayerDef[]): void {
 }
 
 function gameIdFor(mode: GameConfig["mode"], playerOrder: readonly PlayerId[]): string {
-  const players = playerOrder
-    .map((playerId) => playerId.replace(/[^a-zA-Z0-9_-]+/g, "-"))
-    .join("-");
-
-  return `game-${mode}-${players || "players"}`;
+  return `game-${mode}-${playerOrder.length || "players"}p`;
 }
 
 export function createGameState(
@@ -223,6 +219,26 @@ function playerStatus(state: GameState, playerId: PlayerId): PlayerState["status
   return state.players.find((player) => player.id === playerId)?.status;
 }
 
+/**
+ * Players who must not receive another turn while others keep playing (e.g. X01 match winners
+ * waiting for "Continue for others"). Keeps rotation/podium logic aligned with finished checkout state.
+ */
+export function shouldExcludePlayerFromTurnRotation(state: GameState, player: PlayerState): boolean {
+  if (player.status === "eliminated" || player.status === "winner") {
+    return true;
+  }
+
+  if (state.mode !== "x01") {
+    return false;
+  }
+
+  if (player.modeState.mode !== "x01") {
+    return false;
+  }
+
+  return player.modeState.remainingScore <= 0 && player.status !== "active";
+}
+
 function isNonNegativeNumber(value: number): boolean {
   return Number.isFinite(value) && value >= 0;
 }
@@ -275,7 +291,7 @@ function nextPlayerAfter(
     const candidateId = state.playerOrder[candidateIndex];
     const candidate = state.players.find((player) => player.id === candidateId);
 
-    if (candidate && candidate.status !== "eliminated" && candidate.status !== "winner") {
+    if (candidate && !shouldExcludePlayerFromTurnRotation(state, candidate)) {
       return {
         playerId: candidateId,
         roundAdvanced: candidateIndex <= startIndex,
@@ -401,7 +417,10 @@ function applyLegWon(state: GameState, event: GameEvent & { type: "leg_won" }): 
 
     return {
       ...player,
-      status: player.status === "eliminated" ? player.status : ("waiting" as const),
+      status:
+        player.status === "eliminated" || player.status === "winner"
+          ? player.status
+          : ("waiting" as const),
       currentTurn: [],
     };
   });
@@ -499,6 +518,7 @@ function applyMatchContinued(state: GameState, event: GameEvent & { type: "match
     currentTurn: [],
     phase: "playing",
     players,
+    result: undefined,
   });
 }
 

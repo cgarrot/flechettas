@@ -66,7 +66,7 @@ export default async function LocaleLayout({
     <html
       lang={locale}
       className="dark"
-      style={{ scrollPaddingBottom: "calc(7rem + env(safe-area-inset-bottom))" }}
+      style={{ scrollPaddingBottom: "calc(6.5rem + env(safe-area-inset-bottom))" }}
       suppressHydrationWarning
     >
       <head>
@@ -79,7 +79,7 @@ export default async function LocaleLayout({
             attribute="class"
             defaultTheme="dark"
             enableSystem={false}
-            themes={["dark", "light", "brass", "club", "chalk"]}
+            themes={["dark", "light", "brass", "club", "chalk", "rose", "ocean", "ember", "violet"]}
             disableTransitionOnChange
           >
             <div className="min-h-dvh bg-background text-foreground">

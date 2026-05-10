@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { isPwaFloatingPromptSuppressedRoute } from "@/lib/pwa-prompt-routes";
 
 type BeforeInstallPromptChoice = Readonly<{
   outcome: "accepted" | "dismissed";
@@ -39,18 +40,6 @@ function isBeforeInstallPromptEvent(event: Event): event is BeforeInstallPromptE
   return (
     typeof promptEvent.prompt === "function" &&
     typeof promptEvent.userChoice?.then === "function"
-  );
-}
-
-function isPromptSuppressedRoute(pathname: string): boolean {
-  const segments = pathname.split("/").filter(Boolean);
-  const routeSegment = segments[1];
-
-  return (
-    routeSegment === "partie" ||
-    routeSegment === "game" ||
-    routeSegment === "nouvelle-partie" ||
-    routeSegment === "new-game"
   );
 }
 
@@ -114,13 +103,13 @@ export function InstallPrompt() {
     }
   }
 
-  if (!installPrompt || isDismissed || isStandalone || isPromptSuppressedRoute(pathname)) {
+  if (!installPrompt || isDismissed || isStandalone || isPwaFloatingPromptSuppressedRoute(pathname)) {
     return null;
   }
 
   return (
     <>
-      <aside className="fixed inset-x-3 bottom-[calc(11rem+env(safe-area-inset-bottom))] z-50 mx-auto max-w-md md:inset-x-auto md:right-6 md:bottom-6 md:w-96">
+      <aside className="fixed inset-x-3 bottom-[calc(11rem+env(safe-area-inset-bottom))] z-[45] mx-auto max-w-md md:inset-x-auto md:right-6 md:bottom-6 md:w-96">
         <div className="overflow-hidden rounded-[1.75rem] border border-primary/25 bg-card/95 shadow-2xl shadow-primary/15 backdrop-blur">
           <div className="grid gap-4 p-4 sm:p-5">
             <div className="flex items-start gap-3">

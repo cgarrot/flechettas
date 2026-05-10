@@ -328,7 +328,7 @@ export function SetupFlow({ locale }: SetupFlowProps) {
                 type="button"
                 variant="outline"
                 size="sm"
-                className="min-h-10 rounded-xl"
+                className="min-h-11 rounded-xl"
                 disabled={isStarting}
                 onClick={returnToModeSelection}
               >

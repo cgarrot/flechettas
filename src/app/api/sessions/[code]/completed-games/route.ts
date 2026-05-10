@@ -9,8 +9,8 @@ import type { GameEvent, PlayerId, SharedActiveGameSnapshot } from "@/types";
 export const runtime = "nodejs";
 const COMPLETED_GAME_BODY_LIMIT_BYTES = 1024 * 1024;
 const COMPLETED_GAME_PAYLOAD_LIMIT_BYTES = 768 * 1024;
-const MAX_GAME_ID_LENGTH = 160;
-const MAX_IDEMPOTENCY_KEY_LENGTH = 220;
+const MAX_GAME_ID_LENGTH = 512;
+const MAX_IDEMPOTENCY_KEY_LENGTH = 640;
 const MAX_TIMESTAMP_LENGTH = 80;
 const MAX_ACTOR_ID_LENGTH = 160;
 

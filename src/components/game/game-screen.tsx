@@ -6,7 +6,6 @@ import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { generateBotTurn } from "@/bot/simulator";
-import { CheckoutSuggestions } from "@/components/game/checkout-suggestions";
 import { GameHeader } from "@/components/game/game-header";
 import { MatchEnd } from "@/components/game/match-end";
 import { ScoreDisplay } from "@/components/game/score-display";
@@ -118,6 +117,7 @@ export function GameScreen({ locale }: GameScreenProps) {
   const resumeActiveGame = useGameStore((state) => state.resumeActiveGame);
   const refreshSharedActiveGame = useGameStore((state) => state.refreshSharedActiveGame);
   const throwDart = useGameStore((state) => state.throwDart);
+  const sharedSessionBootstrapComplete = useGameStore((state) => state.sharedSessionBootstrapComplete);
   const sharedSessionCode = useGameStore((state) => state.sharedSessionCode);
   const [hasCheckedResume, setHasCheckedResume] = useState(false);
   const [botPlayback, setBotPlayback] = useState<BotPlaybackState | null>(null);
@@ -136,7 +136,7 @@ export function GameScreen({ locale }: GameScreenProps) {
   const currentRound = gameState?.currentRound ?? 0;
 
   useEffect(() => {
-    if (hasCheckedResume) {
+    if (!sharedSessionBootstrapComplete || hasCheckedResume) {
       return;
     }
 
@@ -157,7 +157,7 @@ export function GameScreen({ locale }: GameScreenProps) {
     return () => {
       isCancelled = true;
     };
-  }, [hasCheckedResume, resumeActiveGame]);
+  }, [hasCheckedResume, resumeActiveGame, sharedSessionBootstrapComplete]);
 
   useEffect(() => {
     if (!sharedSessionCode || !hasCheckedResume) {
@@ -289,16 +289,29 @@ export function GameScreen({ locale }: GameScreenProps) {
   const isBotTurn = Boolean(activePlayer?.isBot && gameState?.phase === "playing");
 
   return (
-    <main className="h-[calc(100dvh-3.75rem-env(safe-area-inset-top))] overflow-hidden bg-transparent px-2 pt-1 pb-[calc(0.5rem+env(safe-area-inset-bottom))] text-foreground sm:h-auto sm:min-h-[calc(100dvh-4rem)] sm:overflow-x-hidden sm:px-6 sm:py-6 md:pb-0 lg:px-8">
-      <section className="relative mx-auto flex h-full max-w-7xl flex-col gap-1.5 sm:h-auto sm:gap-6">
-        <div className="pointer-events-none absolute -top-28 right-4 -z-10 size-72 rounded-full bg-chart-2/25 blur-3xl" aria-hidden="true" />
-        <div className="pointer-events-none absolute top-96 -left-24 -z-10 size-80 rounded-full bg-chart-1/20 blur-3xl" aria-hidden="true" />
+    <main
+      className={cn(
+        "bg-transparent px-2 pt-1 text-foreground",
+        "max-h-[calc(100dvh-3.75rem-env(safe-area-inset-top))] min-h-[calc(100dvh-3.75rem-env(safe-area-inset-top))]",
+        "overflow-y-auto overflow-x-hidden overscroll-y-contain pb-[calc(0.75rem+env(safe-area-inset-bottom))]",
+        "sm:max-h-none sm:min-h-[calc(100dvh-4rem)] sm:overflow-x-hidden sm:overflow-y-visible sm:px-6 sm:py-6 sm:pb-6 md:pb-0 lg:px-8",
+      )}
+    >
+      <section className="relative mx-auto flex min-h-0 w-full max-w-7xl flex-col gap-1.5 sm:gap-6">
+        <div
+          className="pointer-events-none absolute -top-28 right-4 -z-10 hidden size-72 rounded-full bg-chart-2/25 blur-3xl sm:block"
+          aria-hidden="true"
+        />
+        <div
+          className="pointer-events-none absolute top-96 -left-24 -z-10 hidden size-80 rounded-full bg-chart-1/20 blur-3xl sm:block"
+          aria-hidden="true"
+        />
 
         <div className="hidden sm:block">
           <GameHeader locale={locale} gameState={gameState} />
         </div>
 
-        {!hasCheckedResume ? <LoadingGameState /> : null}
+        {(!sharedSessionBootstrapComplete || !hasCheckedResume) ? <LoadingGameState /> : null}
 
         {hasCheckedResume && !gameState ? <EmptyGameState locale={locale} /> : null}
 
@@ -306,14 +319,16 @@ export function GameScreen({ locale }: GameScreenProps) {
           <>
             <ScoreDisplay />
 
-            <section className="grid min-h-0 flex-1 gap-1.5 lg:grid-cols-[0.82fr_1.18fr] lg:items-start lg:gap-3" aria-label={game("gameBoardLabel")}>
+            <section
+              className="grid min-h-0 gap-1.5 sm:flex-1 lg:grid-cols-[0.82fr_1.18fr] lg:items-start lg:gap-3"
+              aria-label={game("gameBoardLabel")}
+            >
               <div className="space-y-2 sm:space-y-4">
                 <TurnIndicator
                   botPlayback={botPlayback}
                   selectedEditIndex={editingDartIndex}
                   onSelectEditIndex={(dartIndex) => setEditingDartIndex((currentIndex) => (currentIndex === dartIndex ? null : dartIndex))}
                 />
-                <CheckoutSuggestions className="hidden sm:block" />
               </div>
 
               <div className="space-y-2 sm:space-y-4">
@@ -324,7 +339,10 @@ export function GameScreen({ locale }: GameScreenProps) {
                     onEditComplete={() => setEditingDartIndex(null)}
                   />
                   {isBotTurn ? (
-                    <div className="absolute inset-0 grid place-items-center rounded-2xl bg-background/65 p-4 backdrop-blur-sm" aria-live="polite">
+                    <div
+                      className="absolute inset-0 grid place-items-center rounded-2xl bg-background/88 p-4 sm:bg-background/65 sm:backdrop-blur-sm"
+                      aria-live="polite"
+                    >
                       <Card className="border-primary/20 bg-card/95 py-5 shadow-xl shadow-primary/15">
                         <CardContent className="flex items-center gap-3 px-5 text-sm font-medium text-muted-foreground">
                           <Bot className="size-5 text-primary" aria-hidden="true" />

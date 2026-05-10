@@ -392,15 +392,29 @@ function beginNextLeg(
     currentSet: resetLegsForNewSet ? state.currentSet + 1 : state.currentSet,
     currentTurn: [],
     phase: "playing",
-    players: state.players.map((player) => ({
-      ...player,
-      currentTurn: [],
-      legsWon: resetLegsForNewSet ? 0 : player.legsWon,
-      modeState: isCricketModeState(player.modeState)
-        ? resetCricketLegState(player.modeState)
-        : player.modeState,
-      status: player.id === starterId ? "active" : "waiting",
-    })),
+    players: state.players.map((player) => {
+      const preserveSpectator =
+        player.status === "winner" || player.status === "eliminated";
+
+      return {
+        ...player,
+        currentTurn: [],
+        legsWon: preserveSpectator
+          ? player.legsWon
+          : resetLegsForNewSet
+            ? 0
+            : player.legsWon,
+        modeState:
+          preserveSpectator || !isCricketModeState(player.modeState)
+            ? player.modeState
+            : resetCricketLegState(player.modeState),
+        status: preserveSpectator
+          ? player.status
+          : player.id === starterId
+            ? "active"
+            : "waiting",
+      };
+    }),
   };
 }
 

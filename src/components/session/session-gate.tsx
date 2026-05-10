@@ -4,7 +4,8 @@ import { BarChart3, Link2, Plus, Settings, Trash2, UserRound } from "lucide-reac
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { usePathname } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -32,6 +33,7 @@ import {
   MIN_SHARED_SESSION_CODE_LENGTH,
   normalizeSharedSessionCode,
 } from "@/lib/shared-session-code";
+import { clearDismissedSharedActiveGame } from "@/lib/shared-active-game-dismissal";
 import { createSharedSession, createSharedSessionPlayer, deleteSharedSessionPlayer, ensureSharedSession, fetchSharedSession } from "@/lib/shared-session-api";
 import {
   clearStoredSessionCode,
@@ -51,6 +53,28 @@ import type { Locale } from "@/i18n/routing";
 
 const SESSION_PLAYERS_POLL_MS = 15_000;
 type ShareStatus = "idle" | "copied" | "failed";
+
+function sharedSessionPlayersEqual(
+  a: readonly SharedSessionPlayer[],
+  b: readonly SharedSessionPlayer[],
+): boolean {
+  if (a.length !== b.length) {
+    return false;
+  }
+
+  return a.every((left, index) => {
+    const right = b[index];
+
+    return (
+      left.id === right.id
+      && left.name === right.name
+      && left.sessionCode === right.sessionCode
+      && left.isHost === right.isHost
+      && left.createdAt === right.createdAt
+      && left.updatedAt === right.updatedAt
+    );
+  });
+}
 
 type SessionGateProps = Readonly<{
   locale: Locale;
@@ -90,8 +114,11 @@ export function SessionGate({ locale }: SessionGateProps) {
   const pathname = usePathname();
   const sessionCopy = useTranslations("Session");
   const setSharedSessionContext = useGameStore((state) => state.setSharedSessionContext);
+  const notifySharedSessionBootstrapComplete = useGameStore((state) => state.notifySharedSessionBootstrapComplete);
   const hydrateSharedActiveGame = useGameStore((state) => state.hydrateSharedActiveGame);
   const storePlayerId = useGameStore((state) => state.sharedSessionPlayerId);
+  const storeSessionCode = useGameStore((state) => state.sharedSessionCode);
+  const storeSessionPlayers = useGameStore((state) => state.sharedSessionPlayers);
   const [session, setSession] = useState<SharedSessionSummary | null>(null);
   const [selectedPlayerId, setSelectedPlayerId] = useState<PlayerId | null>(null);
   const [deviceId, setDeviceId] = useState<string | null>(null);
@@ -101,6 +128,12 @@ export function SessionGate({ locale }: SessionGateProps) {
   const [isBusy, setIsBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [shareStatus, setShareStatus] = useState<ShareStatus>("idle");
+  const [sessionGateLayerTarget, setSessionGateLayerTarget] = useState<HTMLElement | null>(null);
+
+  useLayoutEffect(() => {
+    setSessionGateLayerTarget(document.body);
+  }, []);
+
   const selectedPlayer = useMemo(
     () => session?.players.find((player) => player.id === selectedPlayerId) ?? null,
     [selectedPlayerId, session],
@@ -117,6 +150,7 @@ export function SessionGate({ locale }: SessionGateProps) {
     setDeviceId(nextDeviceId);
     if (!storedCode) {
       setSharedSessionContext({ code: null, playerId: null, deviceId: nextDeviceId, players: [] });
+      notifySharedSessionBootstrapComplete();
       return;
     }
 
@@ -125,6 +159,7 @@ export function SessionGate({ locale }: SessionGateProps) {
       setSessionCodeInput(storedCode);
       setError(sessionCopy("codeInvalid", { min: MIN_SHARED_SESSION_CODE_LENGTH }));
       setSharedSessionContext({ code: null, playerId: null, deviceId: nextDeviceId, players: [] });
+      notifySharedSessionBootstrapComplete();
       return;
     }
 
@@ -161,6 +196,7 @@ export function SessionGate({ locale }: SessionGateProps) {
       } finally {
         if (!isCancelled) {
           setIsBusy(false);
+          notifySharedSessionBootstrapComplete();
         }
       }
     }
@@ -170,7 +206,24 @@ export function SessionGate({ locale }: SessionGateProps) {
     return () => {
       isCancelled = true;
     };
-  }, [sessionCopy, setSharedSessionContext]);
+  }, [notifySharedSessionBootstrapComplete, sessionCopy, setSharedSessionContext]);
+
+  useEffect(() => {
+    setSession((current) => {
+      if (!storeSessionCode || !current?.code || current.code !== storeSessionCode) {
+        return current;
+      }
+
+      if (sharedSessionPlayersEqual(current.players, storeSessionPlayers)) {
+        return current;
+      }
+
+      return {
+        ...current,
+        players: storeSessionPlayers,
+      };
+    });
+  }, [storeSessionCode, storeSessionPlayers]);
 
   useEffect(() => {
     const sessionCode = session?.code ?? null;
@@ -419,6 +472,7 @@ export function SessionGate({ locale }: SessionGateProps) {
 
     if (session) {
       clearStoredSessionPlayerId(session.code);
+      clearDismissedSharedActiveGame(session.code);
     }
 
     clearStoredSessionCode();
@@ -463,7 +517,7 @@ export function SessionGate({ locale }: SessionGateProps) {
           </Button>
         </DialogTrigger>
         <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-2xl">
-          <DialogHeader className="pr-10 text-left">
+          <DialogHeader className="pr-14 text-left">
             <DialogTitle className="flex items-center gap-2 text-2xl tracking-tight">
               <Settings className="size-5 text-primary" aria-hidden="true" />
               {sessionCopy("playersTitle")}
@@ -576,8 +630,8 @@ export function SessionGate({ locale }: SessionGateProps) {
     );
   }
 
-  return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-background/95 p-4 backdrop-blur-xl">
+  const sessionBlockingLayer = (
+    <div className="fixed inset-0 z-[90] grid place-items-center bg-background/95 p-4 backdrop-blur-xl">
       <Card className={cn("w-full max-w-3xl gap-0 border-primary/25 bg-card/95 py-0 shadow-2xl shadow-primary/15", session && "border-secondary/30")}>
         <CardContent className="grid gap-5 p-5 text-sm sm:p-6">
           <div className="min-w-0 space-y-2 text-center sm:text-left">
@@ -599,7 +653,7 @@ export function SessionGate({ locale }: SessionGateProps) {
             <div className="grid gap-2 sm:grid-cols-[1fr_auto_auto]">
               <Input
                 value={sessionCodeInput}
-                className="min-h-10 uppercase"
+                className="min-h-11 uppercase"
                 placeholder={sessionCopy("codePlaceholder")}
                 aria-label={sessionCopy("codeLabel")}
                 maxLength={MAX_SHARED_SESSION_CODE_LENGTH}
@@ -617,10 +671,10 @@ export function SessionGate({ locale }: SessionGateProps) {
             <div className="grid gap-2 sm:grid-cols-[1fr_auto_auto]">
               {session.players.length > 0 ? (
                 <Select value={storePlayerId ?? selectedPlayerId ?? ""} onValueChange={(value) => selectPlayer(value)}>
-                  <SelectTrigger className="min-h-10 w-full">
+                  <SelectTrigger className="min-h-11 w-full">
                     <SelectValue placeholder={sessionCopy("playerPlaceholder")} />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="z-[95]">
                     {session.players.map((player) => (
                       <SelectItem key={player.id} value={player.id}>
                         <UserRound className="size-4" aria-hidden="true" />
@@ -632,7 +686,7 @@ export function SessionGate({ locale }: SessionGateProps) {
               ) : (
                 <Input
                   value={playerNameInput}
-                  className="min-h-10"
+                  className="min-h-11"
                   placeholder={sessionCopy("playerNamePlaceholder")}
                   aria-label={sessionCopy("playerNameLabel")}
                   onChange={(event) => setPlayerNameInput(event.target.value)}
@@ -641,7 +695,7 @@ export function SessionGate({ locale }: SessionGateProps) {
               {needsPlayer && session.players.length > 0 ? (
                 <Input
                   value={playerNameInput}
-                  className="min-h-10"
+                  className="min-h-11"
                   placeholder={sessionCopy("playerNamePlaceholder")}
                   aria-label={sessionCopy("playerNameLabel")}
                   onChange={(event) => setPlayerNameInput(event.target.value)}
@@ -660,4 +714,10 @@ export function SessionGate({ locale }: SessionGateProps) {
       </Card>
     </div>
   );
+
+  if (sessionGateLayerTarget) {
+    return createPortal(sessionBlockingLayer, sessionGateLayerTarget);
+  }
+
+  return sessionBlockingLayer;
 }

@@ -128,7 +128,7 @@ export function GameHeader({ locale, gameState }: GameHeaderProps) {
         <LeaveGameButton
           locale={locale}
           size="lg"
-          className="min-h-10 justify-start rounded-xl border-primary/25 sm:min-h-12"
+          className="min-h-11 justify-start rounded-xl border-primary/25 sm:min-h-12"
           ariaLabel={game("backToHome")}
         >
           <ArrowLeft aria-hidden="true" />

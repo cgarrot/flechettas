@@ -32,12 +32,17 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { clearActiveGame, loadActiveGames, type LoadedActiveGame } from "@/db";
-import { fetchSharedActiveGame } from "@/lib/shared-session-api";
+import { clearActiveGame, clearSharedActiveGameCache, loadActiveGames, type LoadedActiveGame } from "@/db";
+import {
+  dismissSharedActiveGameOnDevice,
+  isSharedActiveGameDismissedOnDevice,
+  reconcileSharedActiveGameDismissal,
+} from "@/lib/shared-active-game-dismissal";
+import { fetchSharedActiveGame, saveSharedCompletedGame } from "@/lib/shared-session-api";
 import { useGameStore } from "@/store";
 
 import type { Locale } from "@/i18n/routing";
-import type { GameMode, GameState, PlayerState, SharedActiveGame } from "@/types";
+import type { GameEvent, GameMode, GameState, PlayerId, PlayerState, SharedActiveGame, SharedActiveGameSnapshot } from "@/types";
 
 type ActiveGameBannerProps = Readonly<{
   locale: Locale;
@@ -141,6 +146,64 @@ function listItemFromLocalRecord(record: LoadedActiveGame): ActiveGameListItem {
   };
 }
 
+function snapshotWithEventLog(gameState: GameState, eventLog: readonly GameEvent[]): SharedActiveGameSnapshot {
+  return {
+    gameState: { ...gameState, events: eventLog },
+    eventLog: [...eventLog],
+    mode: gameState.mode,
+    config: gameState.config,
+  };
+}
+
+function latestMatchWonEvent(eventLog: readonly GameEvent[]): Extract<GameEvent, { type: "match_won" }> | undefined {
+  for (let index = eventLog.length - 1; index >= 0; index -= 1) {
+    const event = eventLog[index];
+
+    if (event.type === "match_won") {
+      return event;
+    }
+  }
+
+  return undefined;
+}
+
+function completedAtFor(gameState: GameState, eventLog: readonly GameEvent[]): string {
+  const latestMatchWon = latestMatchWonEvent(eventLog);
+
+  return latestMatchWon?.result.completedAt ||
+    latestMatchWon?.occurredAt ||
+    eventLog[eventLog.length - 1]?.occurredAt ||
+    gameState.updatedAt;
+}
+
+async function finalizeCompletedSharedActiveGame(
+  activeGame: SharedActiveGame,
+  savedByPlayerId: PlayerId | null,
+  savedByDeviceId: string | null,
+): Promise<SharedActiveGame | null> {
+  const gameState = activeGame.snapshot.gameState;
+
+  if (!gameState || gameState.phase !== "match-complete") {
+    return activeGame;
+  }
+
+  const eventLog = activeGame.snapshot.eventLog.length > 0 ? activeGame.snapshot.eventLog : gameState.events;
+  const completedAt = completedAtFor(gameState, eventLog);
+  const result = await saveSharedCompletedGame({
+    code: activeGame.sessionCode,
+    gameId: gameState.id,
+    completedAt,
+    snapshot: snapshotWithEventLog(gameState, eventLog),
+    eventLog,
+    idempotencyKey: `${gameState.id}:${completedAt}`,
+    expectedRevision: activeGame.revision,
+    savedByPlayerId,
+    savedByDeviceId,
+  });
+
+  return result.ok ? null : result.activeGame;
+}
+
 export function ActiveGameBanner({ locale }: ActiveGameBannerProps) {
   const router = useRouter();
   const home = useTranslations("HomePage");
@@ -148,8 +211,11 @@ export function ActiveGameBanner({ locale }: ActiveGameBannerProps) {
   const scoring = useTranslations("Scoring");
   const gameState = useGameStore((state) => state.gameState);
   const sharedSessionCode = useGameStore((state) => state.sharedSessionCode);
+  const sharedSessionPlayerId = useGameStore((state) => state.sharedSessionPlayerId);
+  const sharedSessionDeviceId = useGameStore((state) => state.sharedSessionDeviceId);
   const resumeActiveGame = useGameStore((state) => state.resumeActiveGame);
   const resumeSharedActiveGame = useGameStore((state) => state.resumeSharedActiveGame);
+  const hydrateSharedActiveGame = useGameStore((state) => state.hydrateSharedActiveGame);
   const [hasCheckedActiveGames, setHasCheckedActiveGames] = useState(false);
   const [localActiveGames, setLocalActiveGames] = useState<LoadedActiveGame[]>([]);
   const [sharedActiveGameRecord, setSharedActiveGameRecord] = useState<SharedActiveGame | null>(null);
@@ -166,7 +232,25 @@ export function ActiveGameBanner({ locale }: ActiveGameBannerProps) {
     async function loadBannerGames() {
       try {
         const activeGames = await loadActiveGames({ source: "local" });
-        const sharedGame = sharedSessionCode ? await fetchSharedActiveGame(sharedSessionCode) : null;
+        let rawShared = sharedSessionCode ? await fetchSharedActiveGame(sharedSessionCode) : null;
+
+        if (rawShared?.snapshot.gameState?.phase === "match-complete") {
+          rawShared = await finalizeCompletedSharedActiveGame(rawShared, sharedSessionPlayerId, sharedSessionDeviceId);
+
+          if (rawShared === null && sharedSessionCode) {
+            await clearSharedActiveGameCache(sharedSessionCode);
+            await hydrateSharedActiveGame(null);
+          }
+        }
+
+        if (sharedSessionCode) {
+          reconcileSharedActiveGameDismissal(sharedSessionCode, rawShared);
+        }
+
+        const sharedGame =
+          sharedSessionCode && rawShared !== null && !isSharedActiveGameDismissedOnDevice(sharedSessionCode, rawShared)
+            ? rawShared
+            : null;
 
         if (!isCancelled) {
           setLocalActiveGames(activeGames);
@@ -188,7 +272,7 @@ export function ActiveGameBanner({ locale }: ActiveGameBannerProps) {
     return () => {
       isCancelled = true;
     };
-  }, [sharedSessionCode]);
+  }, [hydrateSharedActiveGame, sharedSessionCode, sharedSessionDeviceId, sharedSessionPlayerId]);
 
   async function reloadLocalActiveGames() {
     setLocalActiveGames(await loadActiveGames({ source: "local" }));
@@ -217,21 +301,48 @@ export function ActiveGameBanner({ locale }: ActiveGameBannerProps) {
   }
 
   async function handleAbandon() {
-    if (confirmGame === null || confirmGame.source !== "local") {
+    if (confirmGame === null) {
+      return;
+    }
+
+    setActionErrorKey(null);
+
+    if (confirmGame.source === "local") {
+      setAbandoningGameId(confirmGame.id);
+
+      try {
+        await clearActiveGame(confirmGame.id);
+
+        if (gameState?.id === confirmGame.id) {
+          await resumeActiveGame(confirmGame.id);
+        }
+
+        await reloadLocalActiveGames();
+        setConfirmGame(null);
+      } catch {
+        setActionErrorKey("activeActionFailed");
+      } finally {
+        setAbandoningGameId(null);
+      }
+
+      return;
+    }
+
+    const gameId = confirmGame.gameState.id;
+    const sharedCode = sharedSessionCode;
+
+    if (!sharedCode || gameId.length === 0) {
+      setActionErrorKey("activeActionFailed");
       return;
     }
 
     setAbandoningGameId(confirmGame.id);
-    setActionErrorKey(null);
 
     try {
-      await clearActiveGame(confirmGame.id);
-
-      if (gameState?.id === confirmGame.id) {
-        await resumeActiveGame(confirmGame.id);
-      }
-
-      await reloadLocalActiveGames();
+      dismissSharedActiveGameOnDevice(sharedCode, gameId);
+      await clearSharedActiveGameCache(sharedCode);
+      await hydrateSharedActiveGame(null);
+      setSharedActiveGameRecord(null);
       setConfirmGame(null);
     } catch {
       setActionErrorKey("activeActionFailed");
@@ -381,7 +492,21 @@ export function ActiveGameBanner({ locale }: ActiveGameBannerProps) {
                       <Trash2 aria-hidden="true" />
                       {home("abandonGame")}
                     </Button>
-                  ) : null}
+                  ) : (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="rounded-xl text-destructive hover:bg-destructive/10 hover:text-destructive"
+                      data-testid={`leave-shared-active-game-${item.id}`}
+                      aria-label={home("leaveSharedActiveGameA11y", { mode: gameModeLabel })}
+                      disabled={isBusy}
+                      onClick={() => setConfirmGame(item)}
+                    >
+                      <Trash2 aria-hidden="true" />
+                      {home("leaveSharedActiveGame")}
+                    </Button>
+                  )}
                 </div>
               </div>
             );
@@ -407,12 +532,16 @@ export function ActiveGameBanner({ locale }: ActiveGameBannerProps) {
           <DialogHeader>
             <DialogTitle>
               {confirmGame
-                ? home("abandonDialogTitleForGame", { mode: confirmModeLabel })
+                ? confirmGame.source === "shared"
+                  ? home("abandonSharedDialogTitleForGame", { mode: confirmModeLabel })
+                  : home("abandonDialogTitleForGame", { mode: confirmModeLabel })
                 : home("abandonDialogTitle")}
             </DialogTitle>
             <DialogDescription>
               {confirmGame
-                ? home("abandonDialogDescriptionForGame", { mode: confirmModeLabel })
+                ? confirmGame.source === "shared"
+                  ? home("abandonSharedDialogDescription")
+                  : home("abandonDialogDescriptionForGame", { mode: confirmModeLabel })
                 : home("abandonDialogDescription")}
             </DialogDescription>
           </DialogHeader>
@@ -434,8 +563,18 @@ export function ActiveGameBanner({ locale }: ActiveGameBannerProps) {
                 void handleAbandon();
               }}
             >
-              {abandoningGameId !== null ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Trash2 aria-hidden="true" />}
-              {abandoningGameId !== null ? home("abandoningGame") : home("confirmAbandon")}
+              {abandoningGameId !== null ? (
+                <Loader2 className="animate-spin" aria-hidden="true" />
+              ) : (
+                <Trash2 aria-hidden="true" />
+              )}
+              {abandoningGameId !== null
+                ? confirmGame?.source === "shared"
+                  ? home("leavingSharedGame")
+                  : home("abandoningGame")
+                : confirmGame?.source === "shared"
+                  ? home("confirmAbandonShared")
+                  : home("confirmAbandon")}
             </Button>
           </DialogFooter>
         </DialogContent>

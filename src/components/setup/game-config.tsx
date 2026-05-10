@@ -240,7 +240,7 @@ function ToggleGroup<TValue extends string>({
             type="button"
             variant={isSelected ? "default" : "ghost"}
             size="sm"
-            className="min-h-9 rounded-lg px-2 text-xs font-bold"
+            className="min-h-11 rounded-lg px-2 text-xs font-bold"
             role="radio"
             aria-checked={isSelected}
             onClick={() => onValueChange(option.value)}
@@ -331,7 +331,7 @@ function BooleanSelect({
       type="button"
       variant={isPressed ? "default" : "outline"}
       size="sm"
-      className="min-h-9 w-full justify-start rounded-xl px-3 text-xs font-bold"
+      className="min-h-11 w-full justify-start rounded-xl px-3 text-xs font-bold"
       data-testid={testId}
       aria-pressed={isPressed}
       aria-label={`${label}: ${stateLabel}`}
@@ -412,7 +412,7 @@ export function GameConfigForm({ config, onConfigChange }: GameConfigFormProps) 
                 type="number"
                 min={1}
                 value={legsToWin}
-                className="min-h-10 bg-background/65"
+                className="min-h-11 bg-background/65"
                 onChange={(event) => {
                   onConfigChange(
                     withLegsToWin(
@@ -430,7 +430,7 @@ export function GameConfigForm({ config, onConfigChange }: GameConfigFormProps) 
                 type="number"
                 min={1}
                 value={setsToWin}
-                className="min-h-10 bg-background/65"
+                className="min-h-11 bg-background/65"
                 onChange={(event) => {
                   onConfigChange(
                     withSetsToWin(
@@ -512,7 +512,7 @@ export function GameConfigForm({ config, onConfigChange }: GameConfigFormProps) 
                     value={String(config.startSegment)}
                     onValueChange={(value) => onConfigChange({ ...config, startSegment: toNumberSegment(value, config.startSegment) })}
                   >
-                    <SelectTrigger id="config-startSegment" data-testid="config-startSegment" className="min-h-10 w-full bg-background/65">
+                    <SelectTrigger id="config-startSegment" data-testid="config-startSegment" className="min-h-11 w-full bg-background/65">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -527,7 +527,7 @@ export function GameConfigForm({ config, onConfigChange }: GameConfigFormProps) 
                     value={String(config.endSegment)}
                     onValueChange={(value) => onConfigChange({ ...config, endSegment: value === "25" ? 25 : toNumberSegment(value, config.endSegment === 25 ? 20 : config.endSegment) })}
                   >
-                    <SelectTrigger id="config-endSegment" data-testid="config-endSegment" className="min-h-10 w-full bg-background/65">
+                    <SelectTrigger id="config-endSegment" data-testid="config-endSegment" className="min-h-11 w-full bg-background/65">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -589,7 +589,7 @@ export function GameConfigForm({ config, onConfigChange }: GameConfigFormProps) 
                     type="number"
                     min={1}
                     value={config.successStep}
-                    className="min-h-10 bg-background/65"
+                    className="min-h-11 bg-background/65"
                     onChange={(event) => onConfigChange({ ...config, successStep: parsePositiveInteger(event.target.value, config.successStep, 1, 25) })}
                   />
                 </ConfigField>
@@ -600,7 +600,7 @@ export function GameConfigForm({ config, onConfigChange }: GameConfigFormProps) 
                     type="number"
                     min={1}
                     value={config.failureStep}
-                    className="min-h-10 bg-background/65"
+                    className="min-h-11 bg-background/65"
                     onChange={(event) => onConfigChange({ ...config, failureStep: parsePositiveInteger(event.target.value, config.failureStep, 1, 25) })}
                   />
                 </ConfigField>
@@ -633,7 +633,7 @@ export function GameConfigForm({ config, onConfigChange }: GameConfigFormProps) 
                     type="number"
                     min={1}
                     value={config.rounds ?? 1}
-                    className="min-h-10 bg-background/65"
+                    className="min-h-11 bg-background/65"
                     onChange={(event) => onConfigChange({ ...config, rounds: parsePositiveInteger(event.target.value, config.rounds ?? 1, 1, 20) })}
                   />
                 </ConfigField>
@@ -663,7 +663,7 @@ export function GameConfigForm({ config, onConfigChange }: GameConfigFormProps) 
                     type="number"
                     min={1}
                     value={config.startingLives}
-                    className="min-h-10 bg-background/65"
+                    className="min-h-11 bg-background/65"
                     onChange={(event) => onConfigChange({ ...config, startingLives: parsePositiveInteger(event.target.value, config.startingLives, 1, 20) })}
                   />
                 </ConfigField>
@@ -685,7 +685,7 @@ export function GameConfigForm({ config, onConfigChange }: GameConfigFormProps) 
                     type="number"
                     min={1}
                     value={config.requiredHitsToBecomeKiller}
-                    className="min-h-10 bg-background/65"
+                    className="min-h-11 bg-background/65"
                     onChange={(event) => onConfigChange({ ...config, requiredHitsToBecomeKiller: parsePositiveInteger(event.target.value, config.requiredHitsToBecomeKiller, 1, 5) })}
                   />
                 </ConfigField>

@@ -125,16 +125,25 @@ function firstGameStartedEvent(events: readonly GameEvent[]): GameStartedEvent |
   return events.find((event): event is GameStartedEvent => event.type === "game_started");
 }
 
-function latestMatchResult(events: readonly GameEvent[]): GameResult | undefined {
+function latestMatchWonEvent(events: readonly GameEvent[]): Extract<GameEvent, { type: "match_won" }> | undefined {
   for (let index = events.length - 1; index >= 0; index -= 1) {
     const event = events[index];
 
     if (event.type === "match_won") {
-      return event.result;
+      return event;
     }
   }
 
   return undefined;
+}
+
+function latestMatchResult(events: readonly GameEvent[]): GameResult | undefined {
+  return latestMatchWonEvent(events)?.result;
+}
+
+/** Player id from the most recent `match_won` event (staggered multiplayer finishes). */
+export function latestMatchWonPlayerId(events: readonly GameEvent[]): PlayerId | undefined {
+  return latestMatchWonEvent(events)?.playerId;
 }
 
 function finalPlayerState(events: readonly GameEvent[], playerId: PlayerId): PlayerState | undefined {

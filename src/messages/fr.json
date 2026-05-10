@@ -53,6 +53,12 @@
     "cancelAbandon": "Garder la partie",
     "confirmAbandon": "Abandonner la partie",
     "abandoningGame": "Effacement en cours",
+    "leaveSharedActiveGame": "Quitter (cet appareil)",
+    "leaveSharedActiveGameA11y": "Quitter la partie {mode} partagée sur cet appareil",
+    "abandonSharedDialogTitleForGame": "Quitter cette partie {mode} partagée sur cet appareil ?",
+    "abandonSharedDialogDescription": "Les autres joueurs peuvent continuer. Ceci retire la partie de l'accueil et supprime sa copie locale ici. La session partagée reste active : le match continue pour les autres.",
+    "confirmAbandonShared": "Quitter la partie",
+    "leavingSharedGame": "Fermeture…",
     "activeLoadFailed": "Impossible de charger la partie active.",
     "activeActionFailed": "L'action sur la partie active a échoué. Réessayez.",
     "activeGameNotFound": "Cette partie active n'est plus enregistrée sur cet appareil."
@@ -69,13 +75,20 @@
     "themeBrass": "Laiton",
     "themeClub": "Club",
     "themeChalk": "Craie",
+    "themeRose": "Rose",
+    "themeOcean": "Océan",
+    "themeEmber": "Braise",
+    "themeViolet": "Violet",
     "switchToLight": "Passer en mode clair",
     "switchToDark": "Passer en mode sombre",
     "darkMode": "Sombre",
     "lightMode": "Clair",
     "home": "Accueil",
+    "homeShort": "Accueil",
     "newGame": "Nouvelle partie",
-    "history": "Historique"
+    "newGameShort": "Jouer",
+    "history": "Historique",
+    "historyShort": "Histo"
   },
   "Modes": {
     "x01": "X01",
@@ -188,6 +201,7 @@
     "matchCompleteKicker": "Match terminé",
     "matchWinner": "{player} gagne",
     "matchCompleteDescription": "Consultez le résumé du match, puis enregistrez le résultat et rejouez la même configuration ou revenez à l'accueil.",
+    "matchFinalStandingsDescription": "Tous les joueurs encore en lice ont terminé. Le titre correspond au dernier joueur à avoir terminé son score ; le récapitulatif couvre toute la table.",
     "winnerFallback": "Vainqueur",
     "statsSummaryTitle": "Résumé des stats",
     "playerCount": "{count, plural, one {# joueur} other {# joueurs}}",
@@ -199,7 +213,9 @@
     "matchHome": "Enregistrer et rentrer",
     "matchSaving": "Enregistrement",
     "matchRematch": "Rejouer",
-    "matchContinue": "Continuer pour les autres"
+    "matchContinue": "Continuer pour les autres",
+    "matchContinueUnavailable": "Impossible de continuer : aucun joueur restant.",
+    "matchContinueUnavailableHint": "Tous les joueurs ont déjà gagné cette partie. Enregistrez, rentrez à l'accueil ou rejouez."
   },
   "Session": {
     "promptTitle": "Partager ce pupitre",
@@ -512,6 +528,7 @@
     "delete": "Supprimer",
     "confirm": "Confirmer",
     "cancel": "Annuler",
+    "close": "Fermer",
     "yes": "Oui",
     "no": "Non",
     "language": "Langue",

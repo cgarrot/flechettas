@@ -107,7 +107,7 @@ export function PlayerConfig({
         </div>
         <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
           <DialogTrigger asChild>
-            <Button type="button" size="sm" className="min-h-10 shrink-0 rounded-xl" data-testid="add-participant">
+            <Button type="button" size="sm" className="min-h-11 shrink-0 rounded-xl" data-testid="add-participant">
               <Plus className="size-4" aria-hidden="true" />
               <span className="sr-only sm:not-sr-only">{setup("addParticipant")}</span>
             </Button>
@@ -155,7 +155,7 @@ export function PlayerConfig({
                 {sessionBackedHumans ? (
                   <Input
                     value={newHumanName}
-                    className="min-h-10 bg-background/65"
+                    className="min-h-11 bg-background/65"
                     placeholder={setup("newSessionPlayerPlaceholder")}
                     aria-label={setup("newSessionPlayerName")}
                     onChange={(event) => onNewHumanNameChange?.(event.target.value)}
@@ -164,7 +164,7 @@ export function PlayerConfig({
                 <Button
                   type="button"
                   size="sm"
-                  className="min-h-10"
+                  className="min-h-11"
                   data-testid="add-player"
                   disabled={!canCreateHuman}
                   onClick={() => {
@@ -178,7 +178,7 @@ export function PlayerConfig({
                   type="button"
                   size="sm"
                   variant="secondary"
-                  className="min-h-10"
+                  className="min-h-11"
                   data-testid="add-bot"
                   disabled={!canAddPlayer}
                   onClick={() => {
@@ -225,7 +225,7 @@ export function PlayerConfig({
               const fallbackName = setup("playerNameFor", { number: playerNumber });
 
               return (
-                <div key={player.id} className="flex min-h-10 max-w-full items-center gap-1.5 rounded-full border border-border/70 bg-card/80 py-1 pr-1.5 pl-2 shadow-sm shadow-primary/5">
+                <div key={player.id} className="flex min-h-11 max-w-full items-center gap-1.5 rounded-full border border-border/70 bg-card/80 py-1 pr-1.5 pl-2 shadow-sm shadow-primary/5">
                   <Badge variant={player.isBot ? "secondary" : "outline"} className="h-7 px-2">
                     {playerNumber}. {player.isBot ? setup("bot") : setup("human")}
                   </Badge>
@@ -240,7 +240,7 @@ export function PlayerConfig({
                       value={player.name}
                       autoComplete="off"
                       placeholder={setup("playerName")}
-                      className="h-8 min-h-8 w-28 rounded-full border-transparent bg-transparent px-1 text-sm shadow-none focus-visible:border-ring sm:w-32"
+                      className="h-11 min-h-11 w-28 rounded-full border-transparent bg-transparent px-1 text-sm shadow-none focus-visible:border-ring sm:w-32"
                       disabled={sessionBackedHumans && !player.isBot}
                       onChange={(event) => onRenamePlayer(player.id, event.target.value)}
                     />
@@ -255,7 +255,7 @@ export function PlayerConfig({
                         value={String(player.botLevel ?? 1)}
                         onValueChange={(value) => onBotLevelChange(player.id, botLevelFromValue(value))}
                       >
-                        <SelectTrigger id={botLevelId} data-testid={`bot-level-${playerNumber}`} className="h-8 min-h-8 w-32 rounded-full bg-background/65 px-2 text-xs">
+                        <SelectTrigger id={botLevelId} data-testid={`bot-level-${playerNumber}`} className="h-11 min-h-11 w-32 rounded-full bg-background/65 px-2 text-xs">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -273,8 +273,8 @@ export function PlayerConfig({
                     <Button
                       type="button"
                       variant="ghost"
-                      size="icon-xs"
-                      className="size-8 min-h-8 rounded-full text-muted-foreground hover:text-destructive"
+                      size="icon"
+                      className="size-11 min-h-11 rounded-full text-muted-foreground hover:text-destructive"
                       aria-label={setup("removePlayerA11y", { name: player.name || fallbackName })}
                       onClick={() => onRemovePlayer(player.id)}
                     >

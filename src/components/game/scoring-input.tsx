@@ -65,11 +65,6 @@ export function ScoringInput({ className, editingDartIndex = null, onEditComplet
   const [isSubmitting, setIsSubmitting] = useState(false);
   const hasPlayableTurn = gameState?.phase === "playing" && Boolean(gameState.activePlayerId);
   const canThrowDart = hasPlayableTurn && !isSubmitting;
-  const selectedMultiplierLabel = selectedMultiplier === 1
-    ? scoring("single")
-    : selectedMultiplier === 2
-      ? scoring("double")
-      : scoring("triple");
 
   function selectMultiplier(multiplier: Multiplier) {
     setSelectedMultiplier(multiplier);
@@ -109,12 +104,11 @@ export function ScoringInput({ className, editingDartIndex = null, onEditComplet
   return (
     <Card className={cn("overflow-hidden border-primary/20 bg-card/95 py-0 shadow-2xl shadow-primary/10", className)}>
       <CardContent className="space-y-2 p-2 sm:space-y-4 sm:p-5">
-        <div className="grid grid-cols-[2.75rem_1fr] items-stretch gap-1.5">
+        <div className="grid grid-cols-[2.25rem_1fr_1fr_1fr] gap-1.5" aria-label={scoring("multiplier")}>
           <Button
             type="button"
             variant="outline"
-            size="icon"
-            className="h-auto min-h-12 rounded-2xl border-secondary/30"
+            className="min-h-9 touch-manipulation rounded-xl border-secondary/30 px-1"
             data-testid="undo-dart"
             aria-label={scoring("undo")}
             disabled={!hasDartEvents || isSubmitting}
@@ -122,20 +116,9 @@ export function ScoringInput({ className, editingDartIndex = null, onEditComplet
               void undo();
             }}
           >
-            <Undo2 aria-hidden="true" />
+            <Undo2 className="size-4" aria-hidden="true" />
           </Button>
 
-          <div className="grid min-h-12 grid-cols-[auto_1fr] items-center gap-3 rounded-2xl border border-border/70 bg-background/80 px-3" aria-busy={isSubmitting} aria-live="polite">
-            <span className="font-mono text-3xl font-black leading-none text-foreground">
-              {scoring("multiplierBadge", { multiplier: selectedMultiplier })}
-            </span>
-            <span className="min-w-0 truncate text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-              {selectedMultiplierLabel}
-            </span>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-3 gap-1.5" aria-label={scoring("multiplier")}>
           {MULTIPLIER_OPTIONS.map((option) => {
             const isSelected = selectedMultiplier === option.value;
 
@@ -145,7 +128,7 @@ export function ScoringInput({ className, editingDartIndex = null, onEditComplet
                 type="button"
                 variant={isSelected ? "default" : "outline"}
                 className={cn(
-                  "min-h-11 rounded-xl px-2 text-base font-black",
+                  "min-h-11 touch-manipulation rounded-xl px-2 text-base font-black",
                   isSelected && option.id === "d" && "border-secondary/60 bg-secondary text-secondary-foreground shadow-secondary/25 hover:bg-secondary/90",
                   isSelected && option.id === "t" && "border-accent/60 bg-accent text-accent-foreground shadow-accent/25 hover:bg-accent/90",
                 )}
@@ -179,7 +162,7 @@ export function ScoringInput({ className, editingDartIndex = null, onEditComplet
                 type="button"
                 variant="ghost"
                 className={cn(
-                  "grid min-h-12 gap-0.5 rounded-none border-0 bg-card/95 px-0 py-1 font-mono text-2xl font-black text-foreground hover:bg-primary/10 disabled:opacity-60 sm:min-h-14",
+                  "grid min-h-12 touch-manipulation gap-0.5 rounded-none border-0 bg-card/95 px-0 py-1 font-mono text-2xl font-black text-foreground hover:bg-primary/10 disabled:opacity-60 sm:min-h-14",
                   selectedMultiplier === 2 && "hover:bg-secondary/15",
                   selectedMultiplier === 3 && "hover:bg-accent/15",
                 )}
@@ -207,7 +190,7 @@ export function ScoringInput({ className, editingDartIndex = null, onEditComplet
           <Button
             type="button"
             variant="outline"
-            className="min-h-12 rounded-xl font-bold"
+            className="min-h-12 touch-manipulation rounded-xl font-bold"
             data-testid="seg-outer"
             disabled={!canThrowDart}
             onClick={() => scoreTarget(25)}
@@ -218,7 +201,7 @@ export function ScoringInput({ className, editingDartIndex = null, onEditComplet
           <Button
             type="button"
             variant="outline"
-            className="min-h-12 rounded-xl font-bold"
+            className="min-h-12 touch-manipulation rounded-xl font-bold"
             data-testid="seg-bull"
             disabled={!canThrowDart}
             onClick={() => scoreTarget(50)}
@@ -229,7 +212,7 @@ export function ScoringInput({ className, editingDartIndex = null, onEditComplet
           <Button
             type="button"
             variant="secondary"
-            className="min-h-12 rounded-xl font-black"
+            className="min-h-12 touch-manipulation rounded-xl font-black"
             data-testid="dart-miss"
             disabled={!canThrowDart}
             onClick={() => {

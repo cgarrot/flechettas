@@ -2,13 +2,16 @@
 
 import { RefreshCw } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { isPwaFloatingPromptSuppressedRoute } from "@/lib/pwa-prompt-routes";
 
 const SKIP_WAITING_MESSAGE = { type: "SKIP_WAITING" } as const;
 
 export function UpdatePrompt() {
+  const pathname = usePathname();
   const pwa = useTranslations("Pwa");
   const [waitingWorker, setWaitingWorker] = useState<ServiceWorker | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
@@ -113,12 +116,12 @@ export function UpdatePrompt() {
     }, 1500);
   }
 
-  if (!waitingWorker) {
+  if (!waitingWorker || isPwaFloatingPromptSuppressedRoute(pathname)) {
     return null;
   }
 
   return (
-    <aside className="fixed inset-x-3 bottom-[calc(6rem+env(safe-area-inset-bottom))] z-50 mx-auto max-w-md md:inset-x-auto md:right-6 md:bottom-32 md:w-96">
+    <aside className="fixed inset-x-3 bottom-[calc(6rem+env(safe-area-inset-bottom))] z-[45] mx-auto max-w-md md:inset-x-auto md:right-6 md:bottom-32 md:w-96">
       <div className="overflow-hidden rounded-[1.75rem] border border-primary/25 bg-card/95 shadow-2xl shadow-primary/15 backdrop-blur">
         <div className="grid gap-4 p-4 sm:p-5">
           <div className="flex items-start gap-3">

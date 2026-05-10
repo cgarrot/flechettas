@@ -212,7 +212,13 @@ function completedAllRounds(player: PlayerState, config: ShanghaiConfig): boolea
 }
 
 function allPlayersDone(state: GameState, config: ShanghaiConfig): boolean {
-  return state.players.every((player) => completedAllRounds(player, config));
+  return state.players.every((player) => {
+    if (player.status === "winner" || player.status === "eliminated") {
+      return true;
+    }
+
+    return completedAllRounds(player, config);
+  });
 }
 
 function completeGame(

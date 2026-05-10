@@ -110,6 +110,14 @@ function latestMatchResult(events: readonly GameEvent[]): GameResult | undefined
   return undefined;
 }
 
+function winnerIdForCompletedRecord(record: CompletedStoredGameRecord): PlayerId | undefined {
+  return (
+    (record.eventLog !== undefined ? latestMatchResult(record.eventLog)?.winnerId : undefined) ??
+    record.stats.winnerId ??
+    record.result.winnerId
+  );
+}
+
 function playerIdsFor(state: GameState): readonly PlayerId[] {
   const playerIds: PlayerId[] = [];
 
@@ -167,7 +175,8 @@ function completedResultFor(
   events: readonly GameEvent[],
   summary: MatchSummary,
 ): GameResult {
-  const result = state.result ?? latestMatchResult(events) ?? resultFromCompletedState(state, events, summary);
+  const result =
+    latestMatchResult(events) ?? state.result ?? resultFromCompletedState(state, events, summary);
 
   if (result === undefined) {
     throw new Error(`Cannot complete game ${state.id} without a completed result.`);
@@ -269,7 +278,7 @@ function historyEntryFromRecord(record: CompletedStoredGameRecord): HistoryEntry
     startedAt: record.startedAt,
     completedAt,
     playerNames: playerNamesFor(record),
-    winnerName: playerNameById(record, record.stats.winnerId ?? record.result.winnerId),
+    winnerName: playerNameById(record, winnerIdForCompletedRecord(record)),
     duration: record.stats.durationMs ?? durationMs(record.startedAt, completedAt),
     thumbnailStats: thumbnailStatsFor(record.stats),
     summaryId: record.stats.id,
@@ -301,6 +310,13 @@ async function saveCompletionRecord(
   eventLog: readonly GameEvent[],
   summary: CompletedMatchSummary,
 ): Promise<string> {
+  const baseHistoryId = completedRecordIdBase(state.id, summary.completedAt);
+  const existingCompletedBase = await getGameById(baseHistoryId);
+
+  if (existingCompletedBase !== undefined && isCompletedRecord(existingCompletedBase)) {
+    return baseHistoryId;
+  }
+
   const existingRecord = await getGameById(state.id);
   const historyRecordId = await uniqueCompletedRecordId(state.id, summary.completedAt);
   const startedRecord: StoredGameRecord = {

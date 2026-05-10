@@ -27,11 +27,17 @@ import {
   undoLastCricketDart,
   undoLastX01Dart,
   x01Reducer,
+  shouldExcludePlayerFromTurnRotation,
 } from "@/engine";
+import {
+  isSharedActiveGameDismissedOnDevice,
+  reconcileSharedActiveGameDismissal,
+} from "@/lib/shared-active-game-dismissal";
 import {
   fetchSharedActiveGame,
   saveSharedActiveGame,
   saveSharedCompletedGame,
+  type SaveSharedCompletedGameClientResult,
 } from "@/lib/shared-session-api";
 import { onGameComplete } from "@/services/history-service";
 
@@ -68,12 +74,15 @@ export type GameStoreState = ActiveGameSnapshot & {
   sharedSessionPlayers: SharedSessionPlayer[];
   sharedRevision: number;
   sharedSyncError: string | null;
+  /** True after SessionGate finished its initial read of stored/imported session (sync or async). */
+  sharedSessionBootstrapComplete: boolean;
+  notifySharedSessionBootstrapComplete: () => void;
   newGame: (config: GameConfig, players: readonly PlayerDef[]) => Promise<void>;
   throwDart: (dart: Dart) => Promise<void>;
   replaceCurrentTurnDart: (dartIndex: DartIndex, dart: Dart) => Promise<void>;
   undo: () => Promise<void>;
   nextTurn: () => Promise<void>;
-  continueAfterWinner: () => Promise<void>;
+  continueAfterWinner: () => Promise<boolean>;
   resumeActiveGame: (gameId?: string) => Promise<GameState | null>;
   resumeSharedActiveGame: () => Promise<GameState | null>;
   setSharedSessionContext: (context: {
@@ -348,6 +357,18 @@ async function saveSnapshot(
 }
 
 function completedAtFor(state: GameState, eventLog: readonly GameEvent[]): string {
+  for (let index = eventLog.length - 1; index >= 0; index -= 1) {
+    const event = eventLog[index];
+
+    if (event.type === "match_won") {
+      const at = event.result.completedAt || event.occurredAt;
+
+      if (at.length > 0) {
+        return at;
+      }
+    }
+  }
+
   return state.result?.completedAt ?? eventLog[eventLog.length - 1]?.occurredAt ?? state.updatedAt;
 }
 
@@ -363,28 +384,56 @@ function latestWinnerId(eventLog: readonly GameEvent[]): PlayerId | undefined {
   return undefined;
 }
 
-function winnerIdsFromLog(eventLog: readonly GameEvent[]): Set<PlayerId> {
-  const winnerIds = new Set<PlayerId>();
+/**
+ * Players who cannot take part in a post-win continuation: every past `match_won` winner,
+ * eliminated players, mode-specific exclusions (`shouldExcludePlayerFromTurnRotation`: winners,
+ * X01 with remainingScore <= 0 while not the active player, etc.).
+ */
+function excludedPlayerIdsForContinue(state: GameState, eventLog: readonly GameEvent[]): Set<PlayerId> {
+  const excluded = new Set<PlayerId>();
 
   for (const event of eventLog) {
     if (event.type === "match_won") {
-      winnerIds.add(event.playerId);
+      excluded.add(event.playerId);
     }
   }
 
-  return winnerIds;
+  for (const player of state.players) {
+    if (shouldExcludePlayerFromTurnRotation(state, player)) {
+      excluded.add(player.id);
+    }
+  }
+
+  return excluded;
+}
+
+/**
+ * Counts players still eligible to compete for ordering after the latest `match_won`
+ * (current state is `match-complete`). Continue is only meaningful when this is ≥ 2.
+ */
+export function countEligiblePlayersAfterLatestMatchWon(
+  gameState: GameState | null,
+  eventLog: readonly GameEvent[],
+): number {
+  if (!gameState) {
+    return 0;
+  }
+
+  const excluded = excludedPlayerIdsForContinue(gameState, eventLog);
+
+  return gameState.playerOrder.filter((id) => !excluded.has(id)).length;
 }
 
 function nextContinuingPlayerId(state: GameState, eventLog: readonly GameEvent[]): PlayerId | undefined {
   const latestWinner = latestWinnerId(eventLog) ?? state.playerOrder[state.playerOrder.length - 1];
   const startIndex = Math.max(0, state.playerOrder.indexOf(latestWinner));
-  const winnerIds = winnerIdsFromLog(eventLog);
+  const excluded = excludedPlayerIdsForContinue(state, eventLog);
 
   for (let offset = 1; offset <= state.playerOrder.length; offset += 1) {
     const candidateId = state.playerOrder[(startIndex + offset) % state.playerOrder.length];
     const candidate = state.players.find((player) => player.id === candidateId);
 
-    if (!candidate || candidate.status === "eliminated" || winnerIds.has(candidate.id)) {
+    if (!candidate || excluded.has(candidate.id)) {
       continue;
     }
 
@@ -396,6 +445,10 @@ function nextContinuingPlayerId(state: GameState, eventLog: readonly GameEvent[]
 
 function continueStateAfterWinner(state: GameState, eventLog: readonly GameEvent[]): GameState | null {
   if (state.phase !== "match-complete") {
+    return null;
+  }
+
+  if (countEligiblePlayersAfterLatestMatchWon(state, eventLog) < 2) {
     return null;
   }
 
@@ -417,6 +470,19 @@ function continueStateAfterWinner(state: GameState, eventLog: readonly GameEvent
   return continuedState === state ? null : continuedState;
 }
 
+/** True when at least two players remain eligible so others can still compete after this win. */
+export function canContinueAfterWinner(gameState: GameState | null, eventLog: readonly GameEvent[]): boolean {
+  if (!gameState || gameState.phase !== "match-complete") {
+    return false;
+  }
+
+  if (countEligiblePlayersAfterLatestMatchWon(gameState, eventLog) < 2) {
+    return false;
+  }
+
+  return nextContinuingPlayerId(gameState, eventLog) !== undefined;
+}
+
 function shouldRetrySharedSaveAfterConflict(
   localSnapshot: ActiveGameSnapshot,
   remoteActiveGame: SharedActiveGame,
@@ -424,9 +490,25 @@ function shouldRetrySharedSaveAfterConflict(
   const localGameId = localSnapshot.gameState?.id;
   const remoteGameId = remoteActiveGame.snapshot.gameState?.id;
 
-  return localGameId !== undefined &&
-    localGameId === remoteGameId &&
-    localSnapshot.eventLog.length > remoteActiveGame.snapshot.eventLog.length;
+  if (localGameId === undefined) {
+    return false;
+  }
+
+  if (remoteGameId !== localGameId) {
+    return true;
+  }
+
+  return localSnapshot.eventLog.length > remoteActiveGame.snapshot.eventLog.length;
+}
+
+function shouldKeepLocalSnapshotAfterSharedConflict(
+  localSnapshot: ActiveGameSnapshot,
+  remoteActiveGame: SharedActiveGame | null,
+): boolean {
+  const localGameId = localSnapshot.gameState?.id;
+  const remoteGameId = remoteActiveGame?.snapshot.gameState?.id;
+
+  return localGameId !== undefined && remoteGameId !== undefined && localGameId !== remoteGameId;
 }
 
 async function saveSharedSnapshotIfNeeded(
@@ -463,6 +545,14 @@ async function saveSharedSnapshotIfNeeded(
     };
   }
 
+  if (shouldKeepLocalSnapshotAfterSharedConflict(snapshot, result.activeGame)) {
+    return {
+      snapshot,
+      revision: result.revision,
+      conflict: true,
+    };
+  }
+
   if (result.activeGame) {
     return {
       snapshot: result.activeGame.snapshot,
@@ -476,6 +566,21 @@ async function saveSharedSnapshotIfNeeded(
     revision: result.revision,
     conflict: true,
   };
+}
+
+async function saveSharedCompletedGameOnce(
+  input: Parameters<typeof saveSharedCompletedGame>[0],
+): Promise<SaveSharedCompletedGameClientResult> {
+  const first = await saveSharedCompletedGame(input);
+
+  if (first.ok) {
+    return first;
+  }
+
+  return saveSharedCompletedGame({
+    ...input,
+    expectedRevision: first.revision,
+  });
 }
 
 async function saveSnapshotEverywhere(
@@ -522,6 +627,11 @@ export const useGameStore = create<GameStoreState>()((set, get) => ({
   sharedSessionPlayers: [],
   sharedRevision: 0,
   sharedSyncError: null,
+  sharedSessionBootstrapComplete: false,
+
+  notifySharedSessionBootstrapComplete() {
+    set({ sharedSessionBootstrapComplete: true });
+  },
 
   async newGame(config, players) {
     const occurredAt = occurredAtNow();
@@ -666,16 +776,18 @@ export const useGameStore = create<GameStoreState>()((set, get) => ({
     const { gameState, eventLog } = get();
 
     if (!gameState) {
-      return;
+      return false;
     }
 
     const nextState = continueStateAfterWinner(gameState, eventLog);
 
     if (nextState === null) {
-      return;
+      return false;
     }
 
     set(await saveSnapshotEverywhere(nextState, get));
+
+    return true;
   },
 
   async resumeActiveGame(gameId) {
@@ -717,11 +829,15 @@ export const useGameStore = create<GameStoreState>()((set, get) => ({
     }
 
     try {
-      const activeGame = await fetchSharedActiveGame(sharedSessionCode);
+      const fetched = await fetchSharedActiveGame(sharedSessionCode);
 
       if (get().sharedSessionCode !== sharedSessionCode) {
         return get().gameState;
       }
+
+      reconcileSharedActiveGameDismissal(sharedSessionCode, fetched);
+      const activeGame =
+        fetched !== null && isSharedActiveGameDismissedOnDevice(sharedSessionCode, fetched) ? null : fetched;
 
       if (activeGame === null) {
         await clearSharedActiveGameCache(sharedSessionCode);
@@ -765,7 +881,18 @@ export const useGameStore = create<GameStoreState>()((set, get) => ({
   },
 
   async hydrateSharedActiveGame(activeGame) {
-    if (activeGame === null) {
+    const sharedSessionCode = get().sharedSessionCode;
+    let nextActiveGame = activeGame;
+
+    if (nextActiveGame !== null && sharedSessionCode) {
+      reconcileSharedActiveGameDismissal(sharedSessionCode, nextActiveGame);
+
+      if (isSharedActiveGameDismissedOnDevice(sharedSessionCode, nextActiveGame)) {
+        nextActiveGame = null;
+      }
+    }
+
+    if (nextActiveGame === null) {
       const clearedSessionCode = get().sharedSessionCode;
 
       if (clearedSessionCode) {
@@ -785,13 +912,13 @@ export const useGameStore = create<GameStoreState>()((set, get) => ({
       return null;
     }
 
-    const activeGameSessionCode = activeGame.sessionCode;
+    const activeGameSessionCode = nextActiveGame.sessionCode;
 
     if (get().sharedSessionCode !== activeGameSessionCode) {
       return get().gameState;
     }
 
-    const snapshot = activeGame.snapshot;
+    const snapshot = nextActiveGame.snapshot;
 
     if (snapshot.gameState) {
       await saveActiveGame(snapshot.gameState, snapshot.eventLog, {
@@ -808,7 +935,7 @@ export const useGameStore = create<GameStoreState>()((set, get) => ({
 
     set({
       ...snapshot,
-      sharedRevision: activeGame.revision,
+      sharedRevision: nextActiveGame.revision,
       sharedSyncError: null,
     });
 
@@ -829,27 +956,42 @@ export const useGameStore = create<GameStoreState>()((set, get) => ({
         return get().gameState;
       }
 
-      if (activeGame === null) {
-        await clearSharedActiveGameCache(sharedSessionCode);
+      reconcileSharedActiveGameDismissal(sharedSessionCode, activeGame);
+      const effectiveGame =
+        activeGame !== null && isSharedActiveGameDismissedOnDevice(sharedSessionCode, activeGame) ? null : activeGame;
 
+      if (effectiveGame === null) {
         if (get().sharedSessionCode !== sharedSessionCode) {
           return get().gameState;
         }
 
-        set({
-          ...emptySnapshot(),
-          sharedRevision: 0,
-          sharedSyncError: null,
-        });
+        const localGameState = get().gameState;
+
+        // Polling can briefly observe no active game right after `newGame` (save not visible yet)
+        // or on flaky responses. Never wipe an in-memory match from a background refresh;
+        // `finishGame` and session switches clear state explicitly.
+        if (localGameState === null) {
+          await clearSharedActiveGameCache(sharedSessionCode);
+
+          if (get().sharedSessionCode !== sharedSessionCode) {
+            return get().gameState;
+          }
+
+          set({
+            ...emptySnapshot(),
+            sharedRevision: 0,
+            sharedSyncError: null,
+          });
+        }
 
         return null;
       }
 
-      if (activeGame.revision <= sharedRevision) {
+      if (effectiveGame.revision <= sharedRevision) {
         return get().gameState;
       }
 
-      return get().hydrateSharedActiveGame(activeGame);
+      return get().hydrateSharedActiveGame(effectiveGame);
     } catch (error) {
       console.error(error);
       set({ sharedSyncError: "poll_failed" });
@@ -865,51 +1007,53 @@ export const useGameStore = create<GameStoreState>()((set, get) => ({
       return null;
     }
 
-    const savedGameId = await onGameComplete(gameState, eventLog, { clearActive: false });
-
     const { sharedRevision, sharedSessionCode, sharedSessionPlayerId, sharedSessionDeviceId } = get();
+
+    let sharedCompleteSyncError: string | null = null;
+    let nextSharedRevision = sharedSessionCode ? sharedRevision : get().sharedRevision;
 
     if (sharedSessionCode) {
       const snapshot = snapshotWithEventLog(gameState, eventLog);
       const completedAt = completedAtFor(gameState, eventLog);
-      const completedResult = await (async () => {
-        try {
-          return await saveSharedCompletedGame({
-            code: sharedSessionCode,
-            gameId: gameState.id,
-            completedAt,
-            snapshot,
-            eventLog,
-            idempotencyKey: `${gameState.id}:${completedAt}`,
-            expectedRevision: sharedRevision,
-            savedByPlayerId: sharedSessionPlayerId,
-            savedByDeviceId: sharedSessionDeviceId,
-          });
-        } catch (error) {
-          console.error(error);
-          set({ sharedSyncError: "completed_save_failed" });
-          throw error;
-        }
-      })();
+      let completedResult: SaveSharedCompletedGameClientResult | undefined;
 
-      if (!completedResult.ok) {
-        if (completedResult.activeGame) {
-          await get().hydrateSharedActiveGame(completedResult.activeGame);
+      try {
+        completedResult = await saveSharedCompletedGameOnce({
+          code: sharedSessionCode,
+          gameId: gameState.id,
+          completedAt,
+          snapshot,
+          eventLog,
+          idempotencyKey: `${gameState.id}:${completedAt}`,
+          expectedRevision: sharedRevision,
+          savedByPlayerId: sharedSessionPlayerId,
+          savedByDeviceId: sharedSessionDeviceId,
+        });
+      } catch (error) {
+        console.error(error);
+        sharedCompleteSyncError = "completed_save_failed";
+      }
+
+      if (completedResult !== undefined) {
+        if (completedResult.ok) {
+          nextSharedRevision = 0;
+          sharedCompleteSyncError = null;
         } else {
-          set({
-            sharedRevision: completedResult.revision,
-            sharedSyncError: "revision_conflict",
-          });
+          nextSharedRevision = completedResult.revision;
+          sharedCompleteSyncError = completedResult.activeGame
+            ? "completed_revision_mismatch"
+            : "no_server_active_game";
         }
-
-        throw new Error("Shared completed game save conflicted with the latest session state.");
       }
     }
+
+    const savedGameId = await onGameComplete(gameState, eventLog, { clearActive: false });
 
     await clearActiveGame(gameState.id);
     set({
       ...emptySnapshot(),
-      sharedRevision: sharedSessionCode ? 0 : get().sharedRevision,
+      sharedRevision: nextSharedRevision,
+      sharedSyncError: sharedSessionCode ? sharedCompleteSyncError : null,
     });
 
     return savedGameId;

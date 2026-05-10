@@ -31,11 +31,45 @@ const getPrecacheUrls = () =>
     .map((entry) => (typeof entry === "string" ? entry : entry.url))
     .filter(Boolean);
 
-const getCachedNavigationFallback = async (request) =>
-  (await caches.match(request)) ??
-  (await caches.match("/fr")) ??
-  (await caches.match("/")) ??
-  Response.error();
+/** Locales routed as pathname prefix (matches app `[locale]` segment). */
+const NAVIGATION_FALLBACK_LOCALE_PREFIXES = new Set(["en", "fr"]);
+
+/**
+ * @param {string} requestUrl
+ * @returns {string | null} e.g. "/en" or "/fr"; null when no locale prefix
+ */
+const getLocaleRootFromNavigationUrl = (requestUrl) => {
+  const pathname = new URL(requestUrl).pathname.replace(/\/+$/, "") || "/";
+  const firstSegment =
+    pathname === "/" ? undefined : pathname.split("/").filter(Boolean)[0];
+  if (
+    firstSegment !== undefined &&
+    NAVIGATION_FALLBACK_LOCALE_PREFIXES.has(firstSegment)
+  ) {
+    return `/${firstSegment}`;
+  }
+  return null;
+};
+
+const getCachedNavigationFallback = async (request) => {
+  const exactMatch = await caches.match(request);
+
+  if (exactMatch) {
+    return exactMatch;
+  }
+
+  const localeRoot = getLocaleRootFromNavigationUrl(request.url);
+
+  if (localeRoot !== null) {
+    const localizedRoot = await caches.match(localeRoot);
+
+    if (localizedRoot) {
+      return localizedRoot;
+    }
+  }
+
+  return (await caches.match("/")) ?? Response.error();
+};
 
 serviceWorkerGlobal.addEventListener("install", (event) => {
   event.waitUntil(

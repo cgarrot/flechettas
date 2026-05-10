@@ -62,6 +62,7 @@ export function BottomNav({ locale }: BottomNavProps) {
       key: "home",
       href: homeRouteFor(locale),
       label: navigation("home"),
+      shortLabel: navigation("homeShort"),
       testId: "nav-home",
       icon: Home,
     },
@@ -69,6 +70,7 @@ export function BottomNav({ locale }: BottomNavProps) {
       key: "newGame",
       href: setupRouteFor(locale),
       label: navigation("newGame"),
+      shortLabel: navigation("newGameShort"),
       testId: "nav-new-game",
       icon: PlusCircle,
     },
@@ -76,6 +78,7 @@ export function BottomNav({ locale }: BottomNavProps) {
       key: "history",
       href: historyRouteFor(locale),
       label: navigation("history"),
+      shortLabel: navigation("historyShort"),
       testId: "nav-history",
       icon: History,
     },
@@ -88,27 +91,30 @@ export function BottomNav({ locale }: BottomNavProps) {
   return (
     <nav
       aria-label={navigation("ariaLabel")}
-      className="fixed inset-x-3 bottom-[calc(0.75rem+env(safe-area-inset-bottom))] z-40 grid grid-cols-3 gap-2 rounded-[1.75rem] border border-primary/25 bg-card/95 p-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] shadow-2xl shadow-primary/15 backdrop-blur md:inset-x-auto md:top-1/2 md:bottom-auto md:left-4 md:w-20 md:-translate-y-1/2 md:grid-cols-1 md:rounded-[2rem] md:pb-2"
+      className="fixed inset-x-2 bottom-[max(0.5rem,env(safe-area-inset-bottom))] z-40 mx-auto grid max-w-[28rem] grid-cols-3 gap-1.5 rounded-[1.45rem] border border-primary/25 bg-card/95 p-1.5 shadow-2xl shadow-primary/15 backdrop-blur sm:inset-x-3 sm:gap-2 sm:rounded-[1.75rem] sm:p-2 md:inset-x-auto md:top-1/2 md:bottom-auto md:left-4 md:w-20 md:-translate-y-1/2 md:grid-cols-1 md:rounded-[2rem]"
     >
       {items.map((item) => {
         const Icon = item.icon;
         const isActive = activeTab === item.key;
+        const accessibleLabel = item.shortLabel === item.label ? item.label : `${item.shortLabel}: ${item.label}`;
 
         return (
           <Link
             key={item.key}
             href={item.href}
             data-testid={item.testId}
+            aria-label={accessibleLabel}
             aria-current={isActive ? "page" : undefined}
             className={cn(
-              "flex min-h-14 flex-col items-center justify-center gap-1 rounded-2xl px-2 text-center text-xs font-bold transition-[background-color,color,box-shadow,transform] hover:bg-primary/10 hover:text-foreground active:translate-y-px md:min-h-16",
+              "flex min-h-12 min-w-0 flex-col items-center justify-center gap-0.5 rounded-[1.15rem] px-1.5 py-1 text-center text-[0.68rem] font-bold transition-[background-color,color,box-shadow,transform] hover:bg-primary/10 hover:text-foreground active:translate-y-px sm:min-h-14 sm:gap-1 sm:rounded-2xl sm:px-2 sm:text-xs md:min-h-16",
               isActive
                 ? "bg-primary text-primary-foreground shadow-lg shadow-primary/30 hover:bg-primary/90 hover:text-primary-foreground"
                 : "text-muted-foreground",
             )}
           >
-            <Icon className="size-5" aria-hidden="true" />
-            <span className="leading-tight">{item.label}</span>
+            <Icon className="size-[1.15rem] sm:size-5" aria-hidden="true" />
+            <span className="w-full truncate leading-none sm:hidden">{item.shortLabel}</span>
+            <span className="hidden w-full truncate leading-tight sm:block">{item.label}</span>
           </Link>
         );
       })}

@@ -49,6 +49,18 @@ async function parseJsonResponse<T>(response: Response): Promise<T> {
   return parsed as T;
 }
 
+async function errorMessageForResponse(response: Response): Promise<string> {
+  try {
+    const body = await parseJsonResponse<{ error?: string }>(response);
+
+    return typeof body.error === "string" && body.error.length > 0
+      ? body.error
+      : `Request failed with ${response.status}.`;
+  } catch {
+    return `Request failed with ${response.status}.`;
+  }
+}
+
 async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, {
     ...init,
@@ -59,7 +71,7 @@ async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
   });
 
   if (!response.ok) {
-    throw new Error(`Request failed with ${response.status} for ${url}.`);
+    throw new Error(`${await errorMessageForResponse(response)} (${url})`);
   }
 
   return parseJsonResponse<T>(response);
@@ -141,7 +153,7 @@ export async function saveSharedActiveGame(input: {
   }
 
   if (!response.ok) {
-    throw new Error(`Active game save failed with ${response.status}.`);
+    throw new Error(await errorMessageForResponse(response));
   }
 
   const body = await parseJsonResponse<ActiveGameResponse>(response);
@@ -182,7 +194,7 @@ export async function saveSharedCompletedGame(input: {
   }
 
   if (!response.ok) {
-    throw new Error(`Completed game save failed with ${response.status}.`);
+    throw new Error(await errorMessageForResponse(response));
   }
 
   const body = await parseJsonResponse<CompletedGameResponse>(response);

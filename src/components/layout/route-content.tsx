@@ -19,7 +19,7 @@ export function RouteContent({ children }: RouteContentProps) {
   const pathname = usePathname();
 
   return (
-    <div className={cn(!isScoringRoute(pathname) && "overflow-x-hidden pb-[calc(7rem+env(safe-area-inset-bottom))] md:pb-0")}>
+    <div className={cn(!isScoringRoute(pathname) && "overflow-x-hidden pb-[calc(5.5rem+env(safe-area-inset-bottom))] sm:pb-[calc(6.5rem+env(safe-area-inset-bottom))] md:pb-0")}>
       {children}
     </div>
   );

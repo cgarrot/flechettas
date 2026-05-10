@@ -14,8 +14,8 @@
     "viewHistoryHint": "À consulter plus tard",
     "viewHistoryDescription": "Ce bouton pointe déjà vers l'archive localisée prévue ensuite.",
     "dartboardLabel": "Illustration stylisée d'une cible de fléchettes",
-    "boardModesValue": "8",
-    "boardModes": "modes jouables",
+    "boardModesValue": "30",
+    "boardModes": "départs de jeu",
     "boardLanguagesValue": "FR/EN",
     "boardLanguages": "accueil localisé",
     "boardLocalValue": "PWA",
@@ -353,10 +353,12 @@
     "next": "Continuer",
     "modeSelectionKicker": "Mode de jeu",
     "modeSelectionTitle": "Choisissez le rythme du match",
-    "modeSelectionDescription": "Chaque carte prépare une configuration typée compatible avec le moteur existant, sans ajouter de règles dans l'interface.",
+    "modeSelectionDescription": "Choisissez un départ de jeu prêt à lancer. Les favoris restent mémorisés sur cet appareil et remontent en haut de la grille.",
     "selectModeA11y": "Choisir le mode {mode}",
-    "selectedMode": "Sélectionné",
-    "tapToSelect": "Toucher pour choisir",
+    "selectedMode": "Jeu sélectionné",
+    "tapToSelect": "Choisir",
+    "addFavoriteGameA11y": "Ajouter {game} aux favoris",
+    "removeFavoriteGameA11y": "Retirer {game} des favoris",
     "modeDescriptions": {
       "x01": "Le classique 301, 501 ou 701 avec options de double.",
       "cricket": "Fermez les cibles de 20 à 15 puis le bull, avec variantes de score.",
@@ -366,6 +368,128 @@
       "shanghai": "Accumulez les manches et gardez l'option Shanghai instantané.",
       "training": "Séance ciblée pour simples, doubles, scoring, cricket ou checkout.",
       "killer": "Attribuez les numéros et gérez les vies pour un mode élimination."
+    },
+    "gamePresets": {
+      "x01-501-classic": {
+        "title": "501 ouvert",
+        "description": "Le 501 rapide, sans obligation de double, idéal pour lancer une table mixte."
+      },
+      "x01-301-open": {
+        "title": "301 express",
+        "description": "Une partie X01 plus courte pour échauffement ou rotation rapide."
+      },
+      "x01-501-double-out": {
+        "title": "501 double out",
+        "description": "Le format classique de ligue avec finition exacte sur un double."
+      },
+      "x01-501-master-out": {
+        "title": "501 master out",
+        "description": "Même rythme que le 501, mais les doubles et triples peuvent conclure la leg."
+      },
+      "x01-701-league": {
+        "title": "701 ligue",
+        "description": "Une version longue avec double out pour les matchs plus posés."
+      },
+      "x01-double-in": {
+        "title": "501 double in/out",
+        "description": "Entrée et sortie au double pour une partie plus exigeante."
+      },
+      "cricket-standard": {
+        "title": "Cricket standard",
+        "description": "Fermez 20 à 15 et le bull tout en marquant les points ouverts."
+      },
+      "cricket-cut-throat": {
+        "title": "Cricket cut-throat",
+        "description": "Les points partent chez les adversaires: parfait pour les tables à pression."
+      },
+      "cricket-no-score": {
+        "title": "Cricket sans score",
+        "description": "Course pure aux fermetures, sans gestion de points."
+      },
+      "cricket-race-50": {
+        "title": "Cricket avance 50",
+        "description": "Cricket standard avec une avance de 50 points à atteindre."
+      },
+      "around-open": {
+        "title": "Tour du cadran",
+        "description": "Around the Clock de 1 à 20, touche libre à chaque cible."
+      },
+      "around-doubles": {
+        "title": "Tour des doubles",
+        "description": "Around the Clock réservé aux doubles pour travailler la précision."
+      },
+      "around-triples": {
+        "title": "Tour des triples",
+        "description": "Même parcours, mais uniquement sur les triples."
+      },
+      "around-bull-finish": {
+        "title": "Tour + bull",
+        "description": "Parcourez 1 à 20 puis terminez au bull."
+      },
+      "bobs-27-classic": {
+        "title": "Bob's 27",
+        "description": "Commencez à 27 et enchaînez les doubles sans descendre sous zéro."
+      },
+      "bobs-27-survival": {
+        "title": "Bob's 27 survie",
+        "description": "La version dure: les scores négatifs restent autorisés."
+      },
+      "checkout-121-three": {
+        "title": "Checkout 121",
+        "description": "Un objectif, trois fléchettes, puis on monte ou descend d'un cran."
+      },
+      "checkout-121-six": {
+        "title": "Checkout 121 x6",
+        "description": "Deux visites par cible pour travailler les fins sans se presser."
+      },
+      "checkout-121-ladder": {
+        "title": "Échelle checkout",
+        "description": "Réussites plus récompensées et échecs plus punitifs pour garder l'enjeu."
+      },
+      "shanghai-classic": {
+        "title": "Shanghai",
+        "description": "Manches numérotées avec victoire instantanée sur simple, double et triple."
+      },
+      "shanghai-marathon": {
+        "title": "Shanghai marathon",
+        "description": "Même mode, sans victoire instantanée, pour jouer toutes les manches."
+      },
+      "training-singles": {
+        "title": "Training simples",
+        "description": "Séance courte pour ancrer les simples et garder le geste propre."
+      },
+      "training-doubles": {
+        "title": "Training doubles",
+        "description": "Travail ciblé des doubles sur plusieurs manches."
+      },
+      "training-scoring": {
+        "title": "Training scoring",
+        "description": "Dix manches pour empiler les gros scores."
+      },
+      "training-checkout": {
+        "title": "Training checkout",
+        "description": "Séance orientée finitions pour répéter les sorties."
+      },
+      "training-cricket": {
+        "title": "Training cricket",
+        "description": "Objectifs Cricket avec deux touches requises pour avancer."
+      },
+      "killer-classic": {
+        "title": "Killer classique",
+        "description": "Vies standard, numéros attribués dans l'ordre et élimination progressive."
+      },
+      "killer-random": {
+        "title": "Killer aléatoire",
+        "description": "Numéros tirés au hasard pour une partie moins prévisible."
+      },
+      "killer-first-hit": {
+        "title": "Killer premier impact",
+        "description": "Chaque joueur gagne son numéro avec sa première cible touchée."
+      },
+      "killer-shared": {
+        "title": "Killer chaos",
+        "description": "Plus de vies, numéros partagés et deux touches pour devenir killer."
+      }
     },
     "playerStepKicker": "Participants",
     "playerStepTitle": "Composez l'ordre de jeu",

@@ -14,8 +14,8 @@
     "viewHistoryHint": "Review later",
     "viewHistoryDescription": "This button already points to the localized match archive planned next.",
     "dartboardLabel": "Stylized dartboard graphic",
-    "boardModesValue": "8",
-    "boardModes": "playable modes",
+    "boardModesValue": "30",
+    "boardModes": "game starts",
     "boardLanguagesValue": "FR/EN",
     "boardLanguages": "localized home",
     "boardLocalValue": "PWA",
@@ -353,10 +353,12 @@
     "next": "Continue",
     "modeSelectionKicker": "Game mode",
     "modeSelectionTitle": "Choose the match rhythm",
-    "modeSelectionDescription": "Each card prepares a typed config for the existing engine without adding gameplay rules in the UI.",
+    "modeSelectionDescription": "Pick a ready-to-play game start. Favorites are saved on this device and move to the top of the grid.",
     "selectModeA11y": "Choose {mode} mode",
-    "selectedMode": "Selected",
-    "tapToSelect": "Tap to choose",
+    "selectedMode": "Game selected",
+    "tapToSelect": "Choose",
+    "addFavoriteGameA11y": "Add {game} to favorites",
+    "removeFavoriteGameA11y": "Remove {game} from favorites",
     "modeDescriptions": {
       "x01": "The classic 301, 501, or 701 flow with double options.",
       "cricket": "Close 20 through 15 and bull with scoring variants.",
@@ -366,6 +368,128 @@
       "shanghai": "Stack rounds while keeping instant Shanghai available.",
       "training": "Focused practice for singles, doubles, scoring, cricket, or checkout.",
       "killer": "Assign numbers and manage lives in an elimination mode."
+    },
+    "gamePresets": {
+      "x01-501-classic": {
+        "title": "Open 501",
+        "description": "A fast 501 start with no double requirement, ideal for mixed tables."
+      },
+      "x01-301-open": {
+        "title": "Quick 301",
+        "description": "A shorter X01 game for warmups or quick rotations."
+      },
+      "x01-501-double-out": {
+        "title": "501 double out",
+        "description": "The classic league format with an exact double finish."
+      },
+      "x01-501-master-out": {
+        "title": "501 master out",
+        "description": "The 501 rhythm, but doubles and triples can close the leg."
+      },
+      "x01-701-league": {
+        "title": "701 league",
+        "description": "A longer double-out format for steadier matches."
+      },
+      "x01-double-in": {
+        "title": "501 double in/out",
+        "description": "Start and finish on a double for a stricter game."
+      },
+      "cricket-standard": {
+        "title": "Standard Cricket",
+        "description": "Close 20 through 15 and bull while scoring open points."
+      },
+      "cricket-cut-throat": {
+        "title": "Cut-throat Cricket",
+        "description": "Points go to opponents, perfect for pressure-heavy tables."
+      },
+      "cricket-no-score": {
+        "title": "No-score Cricket",
+        "description": "A pure race to close every target, without point tracking."
+      },
+      "cricket-race-50": {
+        "title": "Cricket lead 50",
+        "description": "Standard Cricket with a 50-point lead required to win."
+      },
+      "around-open": {
+        "title": "Around the board",
+        "description": "Around the Clock from 1 to 20, with any hit accepted."
+      },
+      "around-doubles": {
+        "title": "Doubles round",
+        "description": "Around the Clock on doubles only for focused accuracy work."
+      },
+      "around-triples": {
+        "title": "Triples round",
+        "description": "The same board walk, but only triples count."
+      },
+      "around-bull-finish": {
+        "title": "Round + bull",
+        "description": "Clear 1 through 20, then finish on bull."
+      },
+      "bobs-27-classic": {
+        "title": "Bob's 27",
+        "description": "Start on 27 and chase doubles without dropping below zero."
+      },
+      "bobs-27-survival": {
+        "title": "Bob's 27 survival",
+        "description": "The hard version: negative scores remain in play."
+      },
+      "checkout-121-three": {
+        "title": "Checkout 121",
+        "description": "One target, three darts, then step up or down."
+      },
+      "checkout-121-six": {
+        "title": "Checkout 121 x6",
+        "description": "Two visits per target for finish practice at a calmer pace."
+      },
+      "checkout-121-ladder": {
+        "title": "Checkout ladder",
+        "description": "Bigger rewards for hits and heavier penalties for misses."
+      },
+      "shanghai-classic": {
+        "title": "Shanghai",
+        "description": "Numbered rounds with instant victory on single, double, and triple."
+      },
+      "shanghai-marathon": {
+        "title": "Shanghai marathon",
+        "description": "The same mode without instant victory, so every round gets played."
+      },
+      "training-singles": {
+        "title": "Singles training",
+        "description": "A short session for locking in singles and clean mechanics."
+      },
+      "training-doubles": {
+        "title": "Doubles training",
+        "description": "Focused double practice across several rounds."
+      },
+      "training-scoring": {
+        "title": "Scoring training",
+        "description": "Ten rounds built for stacking bigger visits."
+      },
+      "training-checkout": {
+        "title": "Checkout training",
+        "description": "A finish-focused session for repeating outs."
+      },
+      "training-cricket": {
+        "title": "Cricket training",
+        "description": "Cricket targets with two hits required before advancing."
+      },
+      "killer-classic": {
+        "title": "Classic Killer",
+        "description": "Standard lives, sequential numbers, and progressive elimination."
+      },
+      "killer-random": {
+        "title": "Random Killer",
+        "description": "Random number assignment for a less predictable game."
+      },
+      "killer-first-hit": {
+        "title": "First-hit Killer",
+        "description": "Each player earns a number from their first target hit."
+      },
+      "killer-shared": {
+        "title": "Chaos Killer",
+        "description": "More lives, shared numbers, and two hits to become killer."
+      }
     },
     "playerStepKicker": "Participants",
     "playerStepTitle": "Build the order of play",

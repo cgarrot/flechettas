@@ -17,7 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 
-import { modeMessageKeys } from "./mode-selector";
+import { modeMessageKeys } from "./game-presets";
 
 import type {
   CricketTarget,

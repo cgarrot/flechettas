@@ -21,9 +21,15 @@ import {
   createDefaultGameConfigs,
   GameConfigForm,
 } from "./game-config";
-import { ModeSelector, modeMessageKeys } from "./mode-selector";
+import {
+  createGamePresetConfig,
+  firstPresetIdForMode,
+  modeMessageKeys,
+} from "./game-presets";
+import { ModeSelector } from "./mode-selector";
 import { PlayerConfig } from "./player-config";
 
+import type { GamePreset, GamePresetId } from "./game-presets";
 import type { BotLevel, GameConfig, GameMode, PlayerDef, PlayerId, SharedSessionPlayer } from "@/types";
 
 const MAX_HUMAN_PLAYERS = 20;
@@ -104,6 +110,7 @@ export function SetupFlow({ locale }: SetupFlowProps) {
   const setSharedSessionContext = useGameStore((state) => state.setSharedSessionContext);
   const nextBotId = useRef(1);
   const [selectedMode, setSelectedMode] = useState<GameMode>("x01");
+  const [selectedPresetId, setSelectedPresetId] = useState<GamePresetId>("x01-501-classic");
   const [configs, setConfigs] = useState<Record<GameMode, GameConfig>>(() => createDefaultGameConfigs());
   const [hasLoadedSetupPreferences, setHasLoadedSetupPreferences] = useState(false);
   const [step, setStep] = useState<StepId>("mode");
@@ -136,6 +143,7 @@ export function SetupFlow({ locale }: SetupFlowProps) {
 
     if (storedPreferences) {
       setSelectedMode(storedPreferences.selectedMode);
+      setSelectedPresetId(firstPresetIdForMode(storedPreferences.selectedMode));
       setConfigs(storedPreferences.configs);
     }
 
@@ -204,8 +212,13 @@ export function SetupFlow({ locale }: SetupFlowProps) {
     return { valid: true, players: normalizedPlayers };
   }
 
-  function selectModeAndConfigure(mode: GameMode) {
-    setSelectedMode(mode);
+  function selectPresetAndConfigure(preset: GamePreset) {
+    setSelectedMode(preset.mode);
+    setSelectedPresetId(preset.id);
+    setConfigs((currentConfigs) => ({
+      ...currentConfigs,
+      [preset.mode]: createGamePresetConfig(preset.id, currentConfigs[preset.mode]),
+    }));
     setStep("setup");
   }
 
@@ -367,7 +380,7 @@ export function SetupFlow({ locale }: SetupFlowProps) {
         {step === "mode" ? (
           <Card className="border-primary/20 bg-card/90 p-0 shadow-2xl shadow-primary/10 backdrop-blur">
             <CardContent className="p-3 sm:p-5">
-              <ModeSelector selectedMode={selectedMode} onSelectMode={selectModeAndConfigure} />
+              <ModeSelector selectedPresetId={selectedPresetId} onSelectPreset={selectPresetAndConfigure} />
             </CardContent>
           </Card>
         ) : (

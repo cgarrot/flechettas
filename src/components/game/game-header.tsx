@@ -12,7 +12,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { modeMessageKeys } from "@/components/setup/mode-selector";
+import { modeMessageKeys } from "@/components/setup/game-presets";
 
 import type { GameConfig, GameMode, GameState, KillerAssignment, TrainingFocus } from "@/types";
 

@@ -6,7 +6,6 @@ import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { generateBotTurn } from "@/bot/simulator";
-import { GameHeader } from "@/components/game/game-header";
 import { MatchEnd } from "@/components/game/match-end";
 import { ScoreDisplay } from "@/components/game/score-display";
 import { ScoringInput } from "@/components/game/scoring-input";
@@ -306,10 +305,6 @@ export function GameScreen({ locale }: GameScreenProps) {
           className="pointer-events-none absolute top-96 -left-24 -z-10 hidden size-80 rounded-full bg-chart-1/20 blur-3xl sm:block"
           aria-hidden="true"
         />
-
-        <div className="hidden sm:block">
-          <GameHeader locale={locale} gameState={gameState} />
-        </div>
 
         {(!sharedSessionBootstrapComplete || !hasCheckedResume) ? <LoadingGameState /> : null}
 
